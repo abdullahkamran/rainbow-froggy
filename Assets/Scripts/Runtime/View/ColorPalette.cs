@@ -14,22 +14,22 @@ namespace RainbowFroggy.View
     //   Color 5             Neon Pink          #FF3399
     public static class ColorPalette
     {
-        // Phase 1 colours — Ruby Red and Electric Cyan.
-        private static readonly Color Ruby = new Color(1f, 0.271f, 0.322f);    // #FF4552
-        private static readonly Color Cyan = new Color(0f, 0.898f, 1f);        // #00E5FF
-
-        // Phase 2+ colors — wired up in #5.
-        private static readonly Color Mango  = new Color(1f, 0.816f, 0.208f);  // #FFD035
-        private static readonly Color Purple = new Color(0.706f, 0.161f, 0.976f); // #B429F9
-        private static readonly Color Pink   = new Color(1f, 0.2f, 0.6f);      // #FF3399
+        private static readonly Color Ruby   = new Color(1f,     0.271f, 0.322f);    // #FF4552
+        private static readonly Color Cyan   = new Color(0f,     0.898f, 1f);        // #00E5FF
+        private static readonly Color Mango  = new Color(1f,     0.816f, 0.208f);   // #FFD035
+        private static readonly Color Purple = new Color(0.706f, 0.161f, 0.976f);   // #B429F9
+        private static readonly Color Pink   = new Color(1f,     0.2f,   0.6f);     // #FF3399
 
         public static Color For(PadColor c)
         {
             switch (c)
             {
-                case PadColor.Ruby: return Ruby;
-                case PadColor.Cyan: return Cyan;
-                default:            return Color.white;
+                case PadColor.Ruby:   return Ruby;
+                case PadColor.Cyan:   return Cyan;
+                case PadColor.Mango:  return Mango;
+                case PadColor.Purple: return Purple;
+                case PadColor.Pink:   return Pink;
+                default:              return Color.white;
             }
         }
 
