@@ -88,10 +88,19 @@ namespace RainbowFroggy.Core
             if (target.Color == FrogColor)
             {
                 JumpCount++;
-
-                // Frog lands on the new pad; colour = that pad's colour.
-                FrogColor = target.Color;
                 FrogPadId = target.Id;
+
+                // Shift to a new random color different from the current one so
+                // the guaranteed-path invariant must be re-checked for that color.
+                // Written generically so it holds when Phase 2+ adds more colors.
+                PadColor newColor;
+                do { newColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)]; }
+                while (newColor == FrogColor);
+                FrogColor = newColor;
+
+                // Enforce invariant immediately: a pad of the new color must exist
+                // before the next real tick so the player always has a valid target.
+                _field.Tick(0f, FrogColor);
 
                 return TapResult.Jump;
             }

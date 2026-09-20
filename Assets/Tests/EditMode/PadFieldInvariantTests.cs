@@ -92,6 +92,37 @@ namespace RainbowFroggy.Tests.EditMode
         }
 
         [Test]
+        public void TapPad_ColorShifts_AndMatchingPadExistsImmediately()
+        {
+            var rng  = new SeededRng(99);
+            var game = new RainbowFroggyGame(rng);
+
+            // Find a matching pad that is not the one the frog is already riding.
+            int      targetId = -1;
+            PadColor oldColor = game.FrogColor;
+            foreach (var pad in game.Field.Pads)
+            {
+                if (pad.Color == oldColor && pad.Id != game.FrogPadId)
+                {
+                    targetId = pad.Id;
+                    break;
+                }
+            }
+            Assert.AreNotEqual(-1, targetId, "No matchable tap target found in initial field");
+
+            var result = game.TapPad(targetId);
+            Assert.AreEqual(TapResult.Jump, result, "Expected a successful jump");
+
+            // Color must have shifted.
+            Assert.AreNotEqual(oldColor, game.FrogColor,
+                "FrogColor must change after a successful jump");
+
+            // Invariant: a pad of the new color must exist immediately after the jump.
+            Assert.GreaterOrEqual(game.Field.CountMatching(game.FrogColor), 1,
+                "No pad matching new FrogColor immediately after jump");
+        }
+
+        [Test]
         public void RemovePad_InvariantHolds_AfterEachRemoval()
         {
             var rng   = new SeededRng(7);
