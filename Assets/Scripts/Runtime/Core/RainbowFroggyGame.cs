@@ -5,7 +5,7 @@ namespace RainbowFroggy.Core
     public enum GameScreen
     {
         Playing,
-        MisstepGameOver,    // tapped a pad whose colour didn't match the frog
+        MisstepGameOver,    // tapped a pad whose colour didn't match the frog, or a Rotten pad
         WaterfallGameOver,  // the frog's own pad reached the bottom before a jump
     }
 
@@ -23,11 +23,21 @@ namespace RainbowFroggy.Core
     //   frog jumps to the tapped pad; the old pad is NOT removed — it scrolls
     //   off on its own.  If the frog's current pad reaches Y >= 1 before the
     //   next jump the game transitions to WaterfallGameOver.
+    //
+    // Difficulty phases (driven by Score):
+    //   Phase 1:  0–50    ×1.0 speed, Ruby+Cyan
+    //   Phase 2: 51–150   ×1.5 speed, +Mango, smaller pads
+    //   Phase 3: 151–299  ×2.5 speed, +Purple, 20 % Rotten pads
+    //   Phase 4: 300+     ×4.0 speed, +Pink, drifting pads
     public sealed class RainbowFroggyGame
     {
         public GameScreen Screen    { get; private set; } = GameScreen.Playing;
         public int        JumpCount { get; private set; }
         public PadColor   FrogColor { get; private set; }
+        public int        Phase     { get; private set; } = 1;
+
+        // Score proxy — kept as an alias so future issues can decouple it.
+        public int Score => JumpCount;
 
         // The id of the pad the frog is currently riding (-1 = none).
         public int FrogPadId { get; private set; } = -1;
@@ -61,6 +71,15 @@ namespace RainbowFroggy.Core
         {
             if (Screen != GameScreen.Playing) return;
 
+            // Phase transition check — runs before field tick so that the
+            // new scroll speed takes effect within this same frame.
+            int newPhase = PhaseForScore(Score);
+            if (newPhase != Phase)
+            {
+                Phase = newPhase;
+                _field.SetPhase(newPhase);
+            }
+
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
@@ -87,6 +106,13 @@ namespace RainbowFroggy.Core
 
             if (target.Color == FrogColor)
             {
+                // Rotten pads look right but are traps.
+                if (target.Type == PadType.Rotten)
+                {
+                    Screen = GameScreen.MisstepGameOver;
+                    return TapResult.Misstep;
+                }
+
                 JumpCount++;
                 FrogPadId = target.Id;
 
@@ -109,6 +135,16 @@ namespace RainbowFroggy.Core
                 Screen = GameScreen.MisstepGameOver;
                 return TapResult.Misstep;
             }
+        }
+
+        // ------------------------------------------------------------------ //
+
+        private static int PhaseForScore(int score)
+        {
+            if (score >= 300) return 4;
+            if (score >= 151) return 3;
+            if (score >= 51)  return 2;
+            return 1;
         }
     }
 }

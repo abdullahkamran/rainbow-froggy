@@ -13,22 +13,55 @@ namespace RainbowFroggy.Core
     //        on screen, force the new pad's colour to the frog's colour.
     public sealed class PadField
     {
-        // Phase 1 constants
-        public const float ScrollSpeed     = 0.12f; // normalised units per second
-        public const float SpawnInterval   = 1.8f;  // seconds between scheduled spawns
-        public const int   InitialPadCount = 5;     // pads pre-seeded at start
+        public const float SpawnInterval   = 1.8f;
+        public const int   InitialPadCount = 5;
+
+        // Base scroll speed for Phase 1; scaled by SetPhase.
+        private float _scrollSpeed = 0.12f;
+
+        // Current active colour palette (grows with each phase).
+        private PadColor[] _activePalette = PhaseColors.Phase1;
+
+        // Phase 3+: 20 % of spawned pads are Rotten traps.
+        private bool _rottenEnabled;
+
+        // Phase 4+: spawned pads drift horizontally and bounce at edges.
+        private bool _driftEnabled;
+
+        // Drift speed assigned to Phase-4 pads (normalised units/second).
+        private const float DriftSpeed = 0.15f;
 
         private readonly List<PadData> _pads = new List<PadData>();
         private readonly IRng          _rng;
         private int   _nextId;
         private float _spawnTimer;
 
-        public IReadOnlyList<PadData> Pads => _pads;
+        public IReadOnlyList<PadData> Pads     => _pads;
+
+        // Exposed for tests and diagnostics.
+        public float ScrollSpeed => _scrollSpeed;
 
         public PadField(IRng rng)
         {
             _rng        = rng;
             _spawnTimer = SpawnInterval;
+        }
+
+        // Apply a phase transition: update scroll speed, active palette, and
+        // special-pad flags.  Takes effect for all pads spawned after this call.
+        public void SetPhase(int phase)
+        {
+            _activePalette = PhaseColors.ForPhase(phase);
+            _rottenEnabled = phase >= 3;
+            _driftEnabled  = phase >= 4;
+
+            switch (phase)
+            {
+                case 1:  _scrollSpeed = 0.12f; break; // ×1.0
+                case 2:  _scrollSpeed = 0.18f; break; // ×1.5
+                case 3:  _scrollSpeed = 0.30f; break; // ×2.5
+                default: _scrollSpeed = 0.48f; break; // ×4.0  (phase 4+)
+            }
         }
 
         // Pre-seed the field so the invariant holds from frame 0.
@@ -38,7 +71,6 @@ namespace RainbowFroggy.Core
             _pads.Clear();
             _nextId = 0;
 
-            // Spread pads evenly across the visible area, starting below top.
             for (int i = 0; i < InitialPadCount; i++)
             {
                 float    y = 0.1f + i * (0.8f / InitialPadCount);
@@ -59,9 +91,26 @@ namespace RainbowFroggy.Core
             if (CountMatching(frogColor) == 0)
                 SpawnPad(frogColor);
 
-            // 1. Scroll all pads down.
+            // 1. Scroll all pads down; apply horizontal drift for Phase-4 pads.
             foreach (var pad in _pads)
-                pad.Y += ScrollSpeed * dt;
+            {
+                pad.Y += _scrollSpeed * dt;
+
+                if (pad.VelocityX != 0f)
+                {
+                    pad.X += pad.VelocityX * dt;
+                    if (pad.X <= 0.05f)
+                    {
+                        pad.X        = 0.05f;
+                        pad.VelocityX = -pad.VelocityX;
+                    }
+                    else if (pad.X >= 0.95f)
+                    {
+                        pad.X        = 0.95f;
+                        pad.VelocityX = -pad.VelocityX;
+                    }
+                }
+            }
 
             // 2. Collect off-screen pads.
             var removed = new List<PadData>();
@@ -71,11 +120,8 @@ namespace RainbowFroggy.Core
 
             // 3. Guaranteed-path check: ensure at least one matching pad will
             //    survive after ALL off-screen pads are removed this tick.
-            //    We must account for every pad in `removed` simultaneously —
-            //    checking them one-by-one would see the others still in _pads
-            //    and incorrectly conclude a survivor exists when there isn't one.
             if (CountMatchingExcluding(frogColor, removed) == 0)
-                SpawnPad(frogColor); // spawns at top before the old ones leave
+                SpawnPad(frogColor);
 
             foreach (var pad in removed)
                 _pads.Remove(pad);
@@ -102,7 +148,6 @@ namespace RainbowFroggy.Core
 
             if (target == null) return;
 
-            // Check invariant before removing.
             int matchingAfter = CountMatching(frogColor, excluding: target);
             if (matchingAfter == 0)
                 SpawnPad(frogColor);
@@ -128,8 +173,6 @@ namespace RainbowFroggy.Core
             return n;
         }
 
-        // Counts matching pads while excluding every pad in the given list.
-        // Used by Tick to correctly handle multiple simultaneous removals.
         private int CountMatchingExcluding(PadColor color, List<PadData> excluding)
         {
             int n = 0;
@@ -140,13 +183,24 @@ namespace RainbowFroggy.Core
 
         private void SpawnPad(PadColor color)
         {
-            _pads.Add(new PadData(_nextId++, color, RandomX(), 0f));
+            PadType type = _rottenEnabled && _rng.Next(0, 5) == 0
+                ? PadType.Rotten
+                : PadType.Normal;
+
+            float vx = 0f;
+            float da = 0f;
+            if (_driftEnabled)
+            {
+                da = DriftSpeed;
+                vx = _rng.Next(0, 2) == 0 ? da : -da;
+            }
+
+            _pads.Add(new PadData(_nextId++, color, RandomX(), 0f, type, vx, da));
         }
 
         private PadColor RandomColor()
         {
-            var colors = Phase1Colors.Active;
-            return colors[_rng.Next(0, colors.Length)];
+            return _activePalette[_rng.Next(0, _activePalette.Length)];
         }
 
         private float RandomX()
