@@ -31,13 +31,13 @@ namespace RainbowFroggy.Core
     //   Phase 4: 300+     ×4.0 speed, +Pink, drifting pads
     public sealed class RainbowFroggyGame
     {
-        public GameScreen Screen    { get; private set; } = GameScreen.Playing;
-        public int        JumpCount { get; private set; }
-        public PadColor   FrogColor { get; private set; }
-        public int        Phase     { get; private set; } = 1;
-
-        // Score proxy — kept as an alias so future issues can decouple it.
-        public int Score => JumpCount;
+        public GameScreen Screen          { get; private set; } = GameScreen.Playing;
+        public int        Score           { get; private set; }
+        public int        ComboMultiplier { get; private set; } = 1;
+        // Settable so GameBootstrap can seed it from PlayerPrefs at startup.
+        public int        HighScore       { get; set; }
+        public PadColor   FrogColor       { get; private set; }
+        public int        Phase           { get; private set; } = 1;
 
         // The id of the pad the frog is currently riding (-1 = none).
         public int FrogPadId { get; private set; } = -1;
@@ -47,6 +47,8 @@ namespace RainbowFroggy.Core
 
         private readonly PadField _field;
         private readonly IRng     _rng;
+        private float _gameTime;
+        private float _lastJumpTime = float.NegativeInfinity;
 
         public RainbowFroggyGame(IRng rng)
         {
@@ -71,6 +73,10 @@ namespace RainbowFroggy.Core
         {
             if (Screen != GameScreen.Playing) return;
 
+            _gameTime += dt;
+            if (_gameTime - _lastJumpTime > 1.5f)
+                ComboMultiplier = 1;
+
             // Phase transition check — runs before field tick so that the
             // new scroll speed takes effect within this same frame.
             int newPhase = PhaseForScore(Score);
@@ -88,6 +94,7 @@ namespace RainbowFroggy.Core
                 if (gone.Id == FrogPadId)
                 {
                     Screen = GameScreen.WaterfallGameOver;
+                    if (Score > HighScore) HighScore = Score;
                     return;
                 }
             }
@@ -110,10 +117,28 @@ namespace RainbowFroggy.Core
                 if (target.Type == PadType.Rotten)
                 {
                     Screen = GameScreen.MisstepGameOver;
+                    if (Score > HighScore) HighScore = Score;
                     return TapResult.Misstep;
                 }
 
-                JumpCount++;
+                // Fever Multiplier: quick consecutive jumps cycle 1→2→3→5 (cap ×5).
+                bool withinWindow = (_gameTime - _lastJumpTime) <= 1.5f;
+                if (withinWindow)
+                {
+                    if      (ComboMultiplier == 1) ComboMultiplier = 2;
+                    else if (ComboMultiplier == 2) ComboMultiplier = 3;
+                    else if (ComboMultiplier == 3) ComboMultiplier = 5;
+                    // already 5: stay at 5
+                }
+                else
+                {
+                    ComboMultiplier = 1;
+                }
+
+                // Distance Bonus: +3×combo when target pad is near the top (Y < 0.2).
+                int distanceBonus = target.Y < 0.2f ? 3 * ComboMultiplier : 0;
+                Score += ComboMultiplier + distanceBonus;
+                _lastJumpTime = _gameTime;
                 FrogPadId = target.Id;
 
                 // Shift to a new random color different from the current one so
@@ -133,6 +158,7 @@ namespace RainbowFroggy.Core
             else
             {
                 Screen = GameScreen.MisstepGameOver;
+                if (Score > HighScore) HighScore = Score;
                 return TapResult.Misstep;
             }
         }

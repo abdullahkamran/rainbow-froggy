@@ -32,6 +32,7 @@ namespace RainbowFroggy.View
 
             _game = new RainbowFroggyGame(
                 new SeededRng(UnityEngine.Random.Range(0, int.MaxValue)));
+            _game.HighScore = PlayerPrefs.GetInt("HighScore", 0);
 
             ConfigureCamera();
             BuildBackground();
@@ -48,10 +49,13 @@ namespace RainbowFroggy.View
             _game.Tick(Time.deltaTime);
             SyncAllPads();
             _frogView.SetColor(_game.FrogColor);
-            _hud.SetJumpCount(_game.JumpCount);
+            _hud.SetScore(_game.Score, _game.ComboMultiplier, _game.HighScore);
 
             if (_game.Screen != GameScreen.Playing)
+            {
+                PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 _gameOverScreen.Show(_game.Screen);
+            }
 
             HandleInput();
         }
@@ -90,7 +94,10 @@ namespace RainbowFroggy.View
 
             _game.TapPad(padView.PadId);
             if (_game.Screen != GameScreen.Playing)
+            {
+                PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 _gameOverScreen.Show(_game.Screen);
+            }
         }
 
         // ------------------------------------------------------------------ //
@@ -187,22 +194,38 @@ namespace RainbowFroggy.View
             hudGO.transform.SetParent(canvas.transform, false);
             _hud = hudGO.AddComponent<HudView>();
 
-            var textGO = new GameObject("JumpLabel");
-            textGO.transform.SetParent(hudGO.transform, false);
-            var rt = textGO.AddComponent<RectTransform>();
-            rt.anchorMin        = new Vector2(0f, 1f);
-            rt.anchorMax        = new Vector2(0f, 1f);
-            rt.pivot            = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(20f, -20f);
-            rt.sizeDelta        = new Vector2(200f, 50f);
+            var scoreGO = new GameObject("ScoreLabel");
+            scoreGO.transform.SetParent(hudGO.transform, false);
+            var scoreRT = scoreGO.AddComponent<RectTransform>();
+            scoreRT.anchorMin        = new Vector2(0f, 1f);
+            scoreRT.anchorMax        = new Vector2(0f, 1f);
+            scoreRT.pivot            = new Vector2(0f, 1f);
+            scoreRT.anchoredPosition = new Vector2(20f, -20f);
+            scoreRT.sizeDelta        = new Vector2(260f, 50f);
 
-            var label      = textGO.AddComponent<Text>();
-            label.font     = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.fontSize = 28;
-            label.color    = Color.white;
-            label.text     = "Jumps: 0";
+            var scoreLabel      = scoreGO.AddComponent<Text>();
+            scoreLabel.font     = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            scoreLabel.fontSize = 28;
+            scoreLabel.color    = Color.white;
+            scoreLabel.text     = "Score: 0   x1";
 
-            _hud.Init(label);
+            var bestGO = new GameObject("HighScoreLabel");
+            bestGO.transform.SetParent(hudGO.transform, false);
+            var bestRT = bestGO.AddComponent<RectTransform>();
+            bestRT.anchorMin        = new Vector2(1f, 1f);
+            bestRT.anchorMax        = new Vector2(1f, 1f);
+            bestRT.pivot            = new Vector2(1f, 1f);
+            bestRT.anchoredPosition = new Vector2(-20f, -20f);
+            bestRT.sizeDelta        = new Vector2(200f, 50f);
+
+            var bestLabel           = bestGO.AddComponent<Text>();
+            bestLabel.font          = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            bestLabel.fontSize      = 28;
+            bestLabel.color         = Color.white;
+            bestLabel.alignment     = TextAnchor.UpperRight;
+            bestLabel.text          = "Best: 0";
+
+            _hud.Init(scoreLabel, bestLabel);
         }
 
         private void BuildGameOverScreen()

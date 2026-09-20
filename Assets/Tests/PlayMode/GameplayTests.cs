@@ -59,22 +59,22 @@ namespace RainbowFroggy.Tests.PlayMode
         }
 
         // ------------------------------------------------------------------ //
-        // AC6: tapping a matching pad increments the jump counter by exactly 1.
+        // AC6: tapping a matching pad increases the score.
         // ------------------------------------------------------------------ //
 
         [UnityTest]
-        public IEnumerator TapMatchingPad_IncrementsJumpCountByOne()
+        public IEnumerator TapMatchingPad_IncreasesScore()
         {
             var game = new RainbowFroggyGame(new SeededRng(2));
 
-            int before  = game.JumpCount;
+            int before  = game.Score;
             int matchId = FindMatchingPadId(game, game.FrogColor);
             Assert.AreNotEqual(-1, matchId);
 
             var result = game.TapPad(matchId);
             Assert.AreEqual(TapResult.Jump, result);
-            Assert.AreEqual(before + 1, game.JumpCount,
-                "JumpCount must increase by exactly 1 on a successful tap");
+            Assert.Greater(game.Score, before,
+                "Score must increase on a successful tap");
 
             yield return null;
         }
