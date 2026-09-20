@@ -1,0 +1,15 @@
+{
+  "name": "rainbow-froggy-pixel-check",
+  "version": "1.0.0",
+  "description": "Headless pixel-check script for RainbowFroggy WebGL build (AC4)",
+  "private": true,
+  "scripts": {
+    "pixel-check": "node pixel-check.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^21.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
