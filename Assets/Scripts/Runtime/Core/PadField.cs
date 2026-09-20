@@ -11,6 +11,16 @@ namespace RainbowFroggy.Core
     //        immediately spawn a replacement at the top.
     //     2. Whenever the periodic spawn fires with zero matching pads
     //        on screen, force the new pad's colour to the frog's colour.
+    //
+    // Late Arrivals (PRD §2.1, Phase 2+):
+    //   The guaranteed-path spawn is occasionally delayed by 1–2 seconds,
+    //   creating tension as the player's current pad drifts toward the bottom.
+    //   The invariant is preserved by the eager steps 0 and 3 below.
+    //
+    // Decoys (PRD §2.1, Phase 2+):
+    //   When a guaranteed-path pad spawns via the periodic timer, 1–2 nearby
+    //   pads of different colours appear in adjacent lane positions at the same
+    //   Y, visually distracting the player.
     public sealed class PadField
     {
         public const float SpawnInterval   = 1.8f;
@@ -31,6 +41,16 @@ namespace RainbowFroggy.Core
         // Drift speed assigned to Phase-4 pads (normalised units/second).
         private const float DriftSpeed = 0.15f;
 
+        // Late Arrivals (Phase 2+): flag a pending delayed guaranteed-path spawn.
+        private bool _lateArrivalEnabled;
+        private bool _lateArrivalPending;
+
+        // Decoys (Phase 2+): spawn incorrect-colour pads alongside guaranteed spawns.
+        private bool _decoyEnabled;
+
+        // Tracks current phase so Late Arrival frequency can scale with phase.
+        private int _currentPhase = 1;
+
         private readonly List<PadData> _pads = new List<PadData>();
         private readonly IRng          _rng;
         private int   _nextId;
@@ -39,7 +59,10 @@ namespace RainbowFroggy.Core
         public IReadOnlyList<PadData> Pads     => _pads;
 
         // Exposed for tests and diagnostics.
-        public float ScrollSpeed => _scrollSpeed;
+        public float ScrollSpeed        => _scrollSpeed;
+
+        // Exposed so tests can observe when a Late Arrival is in flight.
+        public bool LateArrivalPending  => _lateArrivalPending;
 
         public PadField(IRng rng)
         {
@@ -51,9 +74,12 @@ namespace RainbowFroggy.Core
         // special-pad flags.  Takes effect for all pads spawned after this call.
         public void SetPhase(int phase)
         {
-            _activePalette = PhaseColors.ForPhase(phase);
-            _rottenEnabled = phase >= 3;
-            _driftEnabled  = phase >= 4;
+            _activePalette      = PhaseColors.ForPhase(phase);
+            _rottenEnabled      = phase >= 3;
+            _driftEnabled       = phase >= 4;
+            _lateArrivalEnabled = phase >= 2;
+            _decoyEnabled       = phase >= 2;
+            _currentPhase       = phase;
 
             switch (phase)
             {
@@ -131,8 +157,38 @@ namespace RainbowFroggy.Core
             if (_spawnTimer <= 0f)
             {
                 _spawnTimer = SpawnInterval;
-                PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
-                SpawnPad(c);
+
+                if (_lateArrivalPending)
+                {
+                    // Late Arrival resolves: the delayed guaranteed-path pad
+                    // finally arrives.  The invariant has been maintained by
+                    // steps 0 and 3 throughout the delay window.
+                    _lateArrivalPending = false;
+                    SpawnPad(frogColor);
+                    if (_decoyEnabled && TryRollDecoy())
+                        SpawnDecoys(frogColor);
+                }
+                else
+                {
+                    PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
+
+                    // Late Arrivals (Phase 2+): occasionally extend the timer by
+                    // 1–2 s and flag a pending forced-colour spawn, creating
+                    // tension while the player waits for the correct pad.
+                    if (_lateArrivalEnabled && TryRollLateArrival())
+                    {
+                        _lateArrivalPending  = true;
+                        _spawnTimer         += _rng.Next(10, 21) * 0.1f; // 1.0–2.0 s
+                    }
+                    else
+                    {
+                        SpawnPad(c);
+                        // Decoys (Phase 2+): cluster incorrect-colour pads around
+                        // guaranteed-path spawns to visually distract the player.
+                        if (_decoyEnabled && c == frogColor && TryRollDecoy())
+                            SpawnDecoys(frogColor);
+                    }
+                }
             }
 
             return removed;
@@ -181,7 +237,14 @@ namespace RainbowFroggy.Core
             return n;
         }
 
+        // Spawn a pad at a random lane position at the top of the play area.
         private void SpawnPad(PadColor color)
+        {
+            SpawnPad(color, RandomX(), 0f);
+        }
+
+        // Spawn a pad at an explicit position, applying Rotten/Drift flags.
+        private void SpawnPad(PadColor color, float x, float y)
         {
             PadType type = _rottenEnabled && _rng.Next(0, 5) == 0
                 ? PadType.Rotten
@@ -195,12 +258,78 @@ namespace RainbowFroggy.Core
                 vx = _rng.Next(0, 2) == 0 ? da : -da;
             }
 
-            _pads.Add(new PadData(_nextId++, color, RandomX(), 0f, type, vx, da));
+            _pads.Add(new PadData(_nextId++, color, x, y, type, vx, da));
+        }
+
+        // Spawn 1–2 decoy pads adjacent to the most-recently-added guaranteed pad.
+        // Decoy colours always differ from the guaranteed pad's colour.
+        private void SpawnDecoys(PadColor guaranteedColor)
+        {
+            // The guaranteed pad is the most-recently-added pad.
+            float gx = _pads[_pads.Count - 1].X;
+            float gy = _pads[_pads.Count - 1].Y;
+
+            // Build the list of the other two lane X values.
+            float[] allLanes = { 0.2f, 0.5f, 0.8f };
+            var available = new List<float>();
+            foreach (float lx in allLanes)
+                if (System.Math.Abs(lx - gx) > 0.01f)
+                    available.Add(lx);
+
+            // Spawn 1 or 2 decoys, each in a distinct non-guaranteed lane.
+            int count = _rng.Next(1, 3); // 1 or 2
+            if (count > available.Count) count = available.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                int   idx        = _rng.Next(0, available.Count);
+                float decoyX     = available[idx];
+                available.RemoveAt(idx);
+
+                PadColor decoyColor = RandomColorExcluding(guaranteedColor);
+                SpawnPad(decoyColor, decoyX, gy);
+            }
+        }
+
+        // Returns true when this scheduled spawn should be delayed (Late Arrival).
+        // Frequency scales with phase: Phase 2 ≈20 %, Phase 3 ≈33 %, Phase 4+ ≈50 %.
+        private bool TryRollLateArrival()
+        {
+            int divisor = _currentPhase == 2 ? 5 : _currentPhase == 3 ? 3 : 2;
+            return _rng.Next(0, divisor) == 0;
+        }
+
+        // Returns true when decoys should accompany this guaranteed-path spawn (~50 %).
+        private bool TryRollDecoy()
+        {
+            return _rng.Next(0, 2) == 0;
         }
 
         private PadColor RandomColor()
         {
             return _activePalette[_rng.Next(0, _activePalette.Length)];
+        }
+
+        // Pick a random colour from the active palette that is not `excluded`.
+        // Safe for palettes of size 1 (returns the only colour as a fallback).
+        private PadColor RandomColorExcluding(PadColor excluded)
+        {
+            if (_activePalette.Length == 1) return _activePalette[0];
+
+            // Count valid alternatives, then pick one by index to avoid looping.
+            int count = 0;
+            foreach (var c in _activePalette)
+                if (c != excluded) count++;
+
+            int pick = _rng.Next(0, count);
+            int idx  = 0;
+            foreach (var c in _activePalette)
+            {
+                if (c == excluded) continue;
+                if (idx == pick) return c;
+                idx++;
+            }
+            return _activePalette[0]; // unreachable; satisfies compiler
         }
 
         private float RandomX()
