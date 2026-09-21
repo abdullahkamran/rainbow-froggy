@@ -31,6 +31,10 @@ namespace RainbowFroggy.Core
         // Drift speed assigned to Phase-4 pads (normalised units/second).
         private const float DriftSpeed = 0.15f;
 
+        private int   _phase;
+        private bool  _lateArrivalPending;
+        private float _lateArrivalTimer;
+
         private readonly List<PadData> _pads = new List<PadData>();
         private readonly IRng          _rng;
         private int   _nextId;
@@ -51,6 +55,7 @@ namespace RainbowFroggy.Core
         // special-pad flags.  Takes effect for all pads spawned after this call.
         public void SetPhase(int phase)
         {
+            _phase         = phase;
             _activePalette = PhaseColors.ForPhase(phase);
             _rottenEnabled = phase >= 3;
             _driftEnabled  = phase >= 4;
@@ -89,7 +94,10 @@ namespace RainbowFroggy.Core
             // 0. Eagerly enforce invariant at the start of each tick so that any
             //    colour change between ticks is covered immediately.
             if (CountMatching(frogColor) == 0)
+            {
                 SpawnPad(frogColor);
+                SpawnDecoys(frogColor, _pads[_pads.Count - 1].X);
+            }
 
             // 1. Scroll all pads down; apply horizontal drift for Phase-4 pads.
             foreach (var pad in _pads)
@@ -126,13 +134,33 @@ namespace RainbowFroggy.Core
             foreach (var pad in removed)
                 _pads.Remove(pad);
 
-            // 4. Scheduled spawn.
+            // 4. Scheduled spawn (phase 2+: 25 % chance of a 1–2 s late arrival).
             _spawnTimer -= dt;
             if (_spawnTimer <= 0f)
             {
                 _spawnTimer = SpawnInterval;
-                PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
-                SpawnPad(c);
+                if (_phase >= 2 && _rng.Next(0, 4) == 0)
+                {
+                    _lateArrivalPending = true;
+                    _lateArrivalTimer   = _rng.Next(10, 21) * 0.1f;
+                }
+                else
+                {
+                    PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
+                    SpawnPad(c);
+                }
+            }
+
+            // 5. Resolve any pending late arrival.
+            if (_lateArrivalPending)
+            {
+                _lateArrivalTimer -= dt;
+                if (_lateArrivalTimer <= 0f)
+                {
+                    _lateArrivalPending = false;
+                    SpawnPad(frogColor);
+                    SpawnDecoys(frogColor, _pads[_pads.Count - 1].X);
+                }
             }
 
             return removed;
@@ -196,6 +224,44 @@ namespace RainbowFroggy.Core
             }
 
             _pads.Add(new PadData(_nextId++, color, RandomX(), 0f, type, vx, da));
+        }
+
+        // Phase 2+: after an invariant-enforcement spawn or late-arrival spawn,
+        // probabilistically place 1–2 distractor pads in adjacent lanes.
+        // 40% chance of 1 decoy, 20% chance of 2 decoys, 40% none.
+        private void SpawnDecoys(PadColor frogColor, float guaranteedX)
+        {
+            if (_phase < 2) return;
+
+            int roll = _rng.Next(0, 5);
+            int decoyCount = (roll == 0 || roll == 1) ? 1 : roll == 2 ? 2 : 0;
+
+            if (decoyCount == 0) return;
+
+            float[] allLanes = new float[] { 0.2f, 0.5f, 0.8f };
+            var availableLanes = new List<float>();
+            foreach (var lane in allLanes)
+            {
+                if (System.Math.Abs(lane - guaranteedX) > 0.01f)
+                    availableLanes.Add(lane);
+            }
+
+            int spawned = 0;
+            foreach (var lane in availableLanes)
+            {
+                if (spawned >= decoyCount) break;
+
+                PadColor decoyColor = frogColor;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    decoyColor = RandomColor();
+                    if (decoyColor != frogColor) break;
+                }
+                if (decoyColor == frogColor) continue;
+
+                _pads.Add(new PadData(_nextId++, decoyColor, lane, 0f));
+                spawned++;
+            }
         }
 
         private PadColor RandomColor()

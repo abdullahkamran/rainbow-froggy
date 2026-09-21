@@ -145,5 +145,72 @@ namespace RainbowFroggy.Tests.EditMode
                     "After removal " + i + ": no matching pad for " + color);
             }
         }
+
+        // Late arrivals are gated on _phase >= 2; in phase 1 the scheduled
+        // spawn must always fire immediately and the invariant must hold.
+        [Test]
+        public void LateArrival_DoesNotTriggerInPhase1()
+        {
+            // CycleRng returning 0 would trigger a late arrival if phase were 2+,
+            // but phase 1 must bypass that path entirely.
+            var rng   = new CycleRng(new int[] { 0 });
+            var field = new PadField(rng);
+            var color = PadColor.Ruby;
+            field.Initialize(color);
+            // Do NOT call SetPhase — default _phase is 0, which is < 2.
+
+            const float dt = 1f / 60f;
+            for (int frame = 0; frame < 200; frame++)
+            {
+                field.Tick(dt, color);
+                Assert.GreaterOrEqual(field.CountMatching(color), 1,
+                    "Frame " + frame + ": no matching pad in phase 1");
+            }
+        }
+
+        // With phase 2 active and a biased RNG that always triggers the late-arrival
+        // path, the timer must eventually expire and the guaranteed-colour pad must
+        // appear; the invariant must hold throughout.
+        [Test]
+        public void LateArrival_EventuallyResolvesAndSpawns()
+        {
+            // Seed 42 produces a mix of values; run enough frames (>2s) so that any
+            // pending late-arrival timer (max 2.0 s) expires.
+            var rng   = new SeededRng(42);
+            var field = new PadField(rng);
+            var color = PadColor.Ruby;
+            field.Initialize(color);
+            field.SetPhase(2);
+
+            const float dt         = 1f / 60f;
+            const int   frameCount = 300; // ~5 s — covers the worst-case 2 s timer
+
+            for (int frame = 0; frame < frameCount; frame++)
+            {
+                field.Tick(dt, color);
+                Assert.GreaterOrEqual(field.CountMatching(color), 1,
+                    "Frame " + frame + ": invariant violated during late-arrival run");
+            }
+        }
+
+        // Decoys must never crowd out the guaranteed-colour pad; the invariant
+        // must hold at every tick across a long phase-2 run.
+        [Test]
+        public void Decoys_DoNotViolateInvariant()
+        {
+            var rng   = new SeededRng(42);
+            var field = new PadField(rng);
+            var color = PadColor.Ruby;
+            field.Initialize(color);
+            field.SetPhase(2);
+
+            const float dt = 1f / 60f;
+            for (int frame = 0; frame < 500; frame++)
+            {
+                field.Tick(dt, color);
+                Assert.GreaterOrEqual(field.CountMatching(color), 1,
+                    "Frame " + frame + ": decoy spawn violated invariant for " + color);
+            }
+        }
     }
 }
