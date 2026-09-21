@@ -44,3 +44,23 @@ set so future phases that change the landing mechanic will be tested correctly.
 | SpawnInterval  | 1.8 s   |
 | InitialPadCount | 5      |
 | Active colours | 2 (Ruby, Cyan) |
+
+## Animation constants (FrogView)
+
+These values are committed so that ACs 1, 3, 4, and 5 are checkable against
+a local reference without the inaccessible PRD.
+
+| Constant     | Value    | Notes |
+|--------------|----------|-------|
+| JumpDuration | 0.175 s  | AC1: within the 0.15–0.2 s band |
+| ArcHeight    | 0.8 wu   | Parabolic peak: `4 × 0.8 × t × (1−t)` world units above the lerp line |
+| SinkDuration | 0.4 s    | AC3: scale-down + alpha-fade on misstep |
+| RideDuration | 0.3 s    | AC4: frog rides pad off screen before game-over |
+| BobFreq      | 3.0 rad/s | AC6: idle sine-wave oscillation frequency |
+| BobAmp       | 0.06 wu  | AC6: idle sine-wave oscillation amplitude |
+
+**Per-skin animation variants** — the issue overview notes that each frog
+skin has "unique animations," but no per-skin animation parameters are
+defined in any locally accessible document.  Until the PRD (relevant
+section) or a design spec is exported and committed to the repository,
+per-skin differentiation is **out of scope for this implementation**.
