@@ -24,7 +24,7 @@ namespace RainbowFroggy.Core
     //   off on its own.  If the frog's current pad reaches Y >= 1 before the
     //   next jump the game transitions to WaterfallGameOver.
     //
-    // Difficulty phases (driven by Score):
+    // Difficulty phases (driven by JumpCount):
     //   Phase 1:  0–50    ×1.0 speed, Ruby+Cyan
     //   Phase 2: 51–150   ×1.5 speed, +Mango, smaller pads
     //   Phase 3: 151–299  ×2.5 speed, +Purple, 20 % Rotten pads
@@ -38,6 +38,9 @@ namespace RainbowFroggy.Core
         public int        HighScore       { get; set; }
         public PadColor   FrogColor       { get; private set; }
         public int        Phase           { get; private set; } = 1;
+
+        // Total number of successful jumps made in this session.
+        public int        JumpCount       { get; private set; }
 
         // The id of the pad the frog is currently riding (-1 = none).
         public int FrogPadId { get; private set; } = -1;
@@ -79,13 +82,12 @@ namespace RainbowFroggy.Core
 
             // Phase transition check — runs before field tick so that the
             // new scroll speed takes effect within this same frame.
-            int newPhase = PhaseForScore(Score);
+            int newPhase = PhaseForJumpCount(JumpCount);
             if (newPhase != Phase)
             {
                 Phase = newPhase;
                 _field.SetPhase(newPhase);
             }
-
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
@@ -141,18 +143,19 @@ namespace RainbowFroggy.Core
                 _lastJumpTime = _gameTime;
                 FrogPadId = target.Id;
 
-                // Shift to a new random color different from the current one so
-                // the guaranteed-path invariant must be re-checked for that color.
-                // Written generically so it holds when Phase 2+ adds more colors.
+                // Shift to a new random color different from the current one.
+                PadColor[] palette = PhaseColors.ForPhase(Phase);
                 PadColor newColor;
-                do { newColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)]; }
+                do { newColor = palette[_rng.Next(0, palette.Length)]; }
                 while (newColor == FrogColor);
                 FrogColor = newColor;
 
-                // Enforce invariant immediately: a pad of the new color must exist
-                // before the next real tick so the player always has a valid target.
+                // Enforce invariant immediately: a pad of the new colour must
+                // exist before the next real tick so the player always has a valid
+                // target.
                 _field.Tick(0f, FrogColor);
 
+                JumpCount++;
                 return TapResult.Jump;
             }
             else
@@ -165,12 +168,13 @@ namespace RainbowFroggy.Core
 
         // ------------------------------------------------------------------ //
 
-        private static int PhaseForScore(int score)
+        private static int PhaseForJumpCount(int jumpCount)
         {
-            if (score >= 300) return 4;
-            if (score >= 151) return 3;
-            if (score >= 51)  return 2;
+            if (jumpCount >= 300) return 4;
+            if (jumpCount >= 151) return 3;
+            if (jumpCount >= 51)  return 2;
             return 1;
         }
+
     }
 }
