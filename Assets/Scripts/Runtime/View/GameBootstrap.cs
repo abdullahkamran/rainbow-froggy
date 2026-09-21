@@ -47,15 +47,21 @@ namespace RainbowFroggy.View
             if (_game.Screen != GameScreen.Playing) return;
 
             _game.Tick(Time.deltaTime);
-            SyncAllPads();
-            _frogView.SetColor(_game.FrogColor);
-            _hud.SetScore(_game.Score, _game.ComboMultiplier, _game.HighScore);
 
-            if (_game.Screen != GameScreen.Playing)
+            // Check for waterfall BEFORE SyncAllPads — the frog's pad view is still
+            // alive this frame; SyncAllPads destroys it in the same pass (AC4).
+            if (_game.Screen == GameScreen.WaterfallGameOver)
             {
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
-                _gameOverScreen.Show(_game.Screen);
+                float worldSpeed = _game.Field.ScrollSpeed * 10f;
+                _frogView.RideDown(worldSpeed, () =>
+                {
+                    _gameOverScreen.Show(GameScreen.WaterfallGameOver);
+                });
             }
+
+            SyncAllPads();
+            _hud.SetScore(_game.Score, _game.ComboMultiplier, _game.HighScore);
 
             HandleInput();
         }
@@ -66,6 +72,9 @@ namespace RainbowFroggy.View
 
         private void HandleInput()
         {
+            // Block all input while a sink or ride-off animation is in progress (AC5).
+            if (_frogView.IsInputBlocking) return;
+
             bool    tapped    = false;
             Vector2 screenPos = Vector2.zero;
 
@@ -92,11 +101,28 @@ namespace RainbowFroggy.View
             var padView = hit.GetComponent<PadView>();
             if (padView == null) return;
 
-            _game.TapPad(padView.PadId);
-            if (_game.Screen != GameScreen.Playing)
+            var result = _game.TapPad(padView.PadId);
+
+            if (result == TapResult.Jump)
             {
+                // Dispatch the jump tween immediately.  Color and anchor are updated
+                // in the landing callback so they are invisible until the frog arrives (AC2).
+                _frogView.JumpTo(padView.transform, () =>
+                {
+                    _frogView.SetAnchor(padView.transform.position +
+                                        new Vector3(0f, 0.3f, 0f));
+                    _frogView.SetColor(_game.FrogColor);
+                });
+            }
+            else if (result == TapResult.Misstep)
+            {
+                // Jump to the wrong pad, then sink, then show game-over (AC3).
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
-                _gameOverScreen.Show(_game.Screen);
+                _frogView.JumpTo(padView.transform, () =>
+                    _frogView.Sink(() =>
+                    {
+                        _gameOverScreen.Show(GameScreen.MisstepGameOver);
+                    }));
             }
         }
 
@@ -138,12 +164,15 @@ namespace RainbowFroggy.View
                 }
             }
 
-            // Move frog to ride its current pad.
+            // Update the frog's anchor so it rides its current pad.
+            // Skip while an animation is running — the coroutine owns the
+            // transform during that time and must not be stomped.
             if (_frogView != null && _game.FrogPadId != -1 &&
+                !_frogView.IsAnimating &&
                 _padViews.TryGetValue(_game.FrogPadId, out var frogPad))
             {
-                _frogView.transform.position =
-                    frogPad.transform.position + new Vector3(0f, 0.3f, 0f);
+                _frogView.SetAnchor(frogPad.transform.position +
+                                    new Vector3(0f, 0.3f, 0f));
             }
         }
 
