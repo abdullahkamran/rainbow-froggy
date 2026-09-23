@@ -13,8 +13,13 @@ namespace RainbowFroggy.Core
     //        on screen, force the new pad's colour to the frog's colour.
     public sealed class PadField
     {
-        public const float SpawnInterval   = 1.8f;
-        public const int   InitialPadCount = 5;
+        public const float SpawnInterval      = 1.8f;
+        public const int   InitialPadCount   = 5;
+
+        // Every this-many scheduled-spawn timer fires, a Rainbow Pad is added
+        // alongside the regular pad.  Counter-gated (no RNG call) so existing
+        // seeded tests see an identical random stream.
+        public const int RainbowPadInterval = 8;
 
         // Base scroll speed for Phase 1; scaled by SetPhase.
         private float _scrollSpeed = 0.12f;
@@ -39,6 +44,9 @@ namespace RainbowFroggy.Core
         private readonly IRng          _rng;
         private int   _nextId;
         private float _spawnTimer;
+
+        // Counts scheduled-spawn timer fires since the last Rainbow Pad was spawned.
+        private int _spawnsSinceRainbow;
 
         public IReadOnlyList<PadData> Pads     => _pads;
 
@@ -65,16 +73,17 @@ namespace RainbowFroggy.Core
         public void Reset()
         {
             _pads.Clear();
-            _nextId             = 0;
-            _spawnTimer         = SpawnInterval;
-            _lateArrivalPending = false;
-            _lateArrivalTimer   = 0f;
-            _phase              = 0;
-            _scrollSpeed        = 0.12f;
-            _activePalette      = PhaseColors.Phase1;
-            _rottenEnabled      = false;
-            _driftEnabled       = false;
-            _rottenSpawnTimer   = 0f;
+            _nextId               = 0;
+            _spawnTimer           = SpawnInterval;
+            _lateArrivalPending   = false;
+            _lateArrivalTimer     = 0f;
+            _phase                = 0;
+            _scrollSpeed          = 0.12f;
+            _activePalette        = PhaseColors.Phase1;
+            _rottenEnabled        = false;
+            _driftEnabled         = false;
+            _rottenSpawnTimer     = 0f;
+            _spawnsSinceRainbow   = 0;
         }
 
         // Apply a phase transition: update scroll speed, active palette, and
@@ -108,7 +117,10 @@ namespace RainbowFroggy.Core
 
             for (int i = 0; i < InitialPadCount; i++)
             {
-                float    y = 0.1f + i * (0.8f / InitialPadCount);
+                // i==0 is the frog's starting pad; place it at Y=0 (top) so it
+                // takes the full 8.33 s (at Phase-1 speed 0.12/s) to scroll off.
+                // Remaining pads are spaced evenly from 0.26 → 0.74.
+                float    y = i == 0 ? 0f : 0.1f + i * (0.8f / InitialPadCount);
                 PadColor c = i == 0 ? frogColor : RandomColor();
                 float    x = RandomX();
                 _pads.Add(new PadData(_nextId++, c, x, y));
@@ -179,6 +191,17 @@ namespace RainbowFroggy.Core
                     PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
                     SpawnPad(c);
                 }
+
+                // Occasionally add a Rainbow Pad alongside the regular scheduled pad.
+                // Counter-gated (no RNG draw) to keep the seeded test stream intact.
+                _spawnsSinceRainbow++;
+                if (_spawnsSinceRainbow >= RainbowPadInterval)
+                {
+                    _spawnsSinceRainbow = 0;
+                    // Centre lane — no RNG needed.
+                    _pads.Add(new PadData(_nextId++, PadColor.Rainbow, 0.5f, 0f,
+                                          PadType.Rainbow));
+                }
             }
 
             // 5. Resolve any pending late arrival.
@@ -233,6 +256,13 @@ namespace RainbowFroggy.Core
             foreach (var pad in _pads)
                 if (pad.Color == color) n++;
             return n;
+        }
+
+        // Test seam: inject a Rainbow Pad at an arbitrary position without
+        // waiting for the periodic counter.  Never call from production code.
+        public void AddRainbowPadForTest(float x = 0.5f, float y = 0.3f)
+        {
+            _pads.Add(new PadData(_nextId++, PadColor.Rainbow, x, y, PadType.Rainbow));
         }
 
         // ------------------------------------------------------------------ //

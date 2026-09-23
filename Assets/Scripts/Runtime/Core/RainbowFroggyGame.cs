@@ -30,6 +30,12 @@ namespace RainbowFroggy.Core
     //   Phase 2: 51–150   ×1.5 speed, +Mango, smaller pads
     //   Phase 3: 151–299  ×2.5 speed, +Purple, 20 % Rotten pads
     //   Phase 4: 300+     ×4.0 speed, +Pink, drifting pads
+    //
+    // Power-ups:
+    //   Rainbow Pad — white/shimmer pad; any frog colour can land on it;
+    //                 landing assigns a new random colour to the frog.
+    //   Prism Mode  — 8 s duration; any-colour jumps, combo advances 2 rungs
+    //                 per jump instead of 1; countdown shown in HUD.
     public sealed class RainbowFroggyGame
     {
         public GameScreen Screen          { get; private set; } = GameScreen.Playing;
@@ -49,17 +55,33 @@ namespace RainbowFroggy.Core
         // The id of the pad the frog is currently riding (-1 = none).
         public int FrogPadId { get; private set; } = -1;
 
+        // ---- Power-up state ----
+
+        // Duration of one Prism Mode activation in seconds.
+        public const float PrismDuration = 8f;
+
+        // True while Prism Mode is active (any-colour jumps, 2× combo step).
+        public bool  IsPrismActive  { get; private set; }
+
+        // Seconds remaining until Prism Mode expires (0 when inactive).
+        public float PrismRemaining { get; private set; }
+
+        // Floating pickups managed by the power-up field.
+        public PowerUpField PowerUps => _powerUps;
+
         // Exposed so tests can query pad state directly.
         public PadField Field => _field;
 
-        private readonly PadField _field;
-        private readonly IRng     _rng;
+        private readonly PadField    _field;
+        private readonly PowerUpField _powerUps;
+        private readonly IRng        _rng;
         private float _gameTime;
         private float _lastJumpTime = float.NegativeInfinity;
 
         public RainbowFroggyGame(IRng rng)
         {
             _rng      = rng;
+            _powerUps = new PowerUpField();
             FrogColor = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
             _field    = new PadField(rng);
             _field.Initialize(FrogColor);
@@ -78,6 +100,18 @@ namespace RainbowFroggy.Core
         // Advance the simulation by dt seconds.
         public void Tick(float dt)
         {
+            // Prism countdown decrements before the Playing guard so that it
+            // ticks every frame the caller drives (deterministic expiry).
+            if (IsPrismActive)
+            {
+                PrismRemaining -= dt;
+                if (PrismRemaining <= 0f)
+                {
+                    PrismRemaining = 0f;
+                    IsPrismActive  = false;
+                }
+            }
+
             if (Screen != GameScreen.Playing) return;
 
             _gameTime += dt;
@@ -92,7 +126,9 @@ namespace RainbowFroggy.Core
                 Phase = newPhase;
                 _field.SetPhase(newPhase);
             }
+
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
+            _powerUps.Tick(dt, _field.ScrollSpeed);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
             foreach (var gone in offScreen)
@@ -106,6 +142,26 @@ namespace RainbowFroggy.Core
             }
         }
 
+        // The player collected a power-up pickup.
+        public void CollectPickup(int id)
+        {
+            if (Screen != GameScreen.Playing) return;
+
+            PickupData target = null;
+            foreach (var p in _powerUps.Pickups)
+                if (p.Id == id) { target = p; break; }
+
+            if (target == null) return;
+
+            if (target.Type == PickupType.Prism)
+            {
+                IsPrismActive  = true;
+                PrismRemaining = PrismDuration;
+            }
+
+            _powerUps.Remove(id);
+        }
+
         // The player tapped a pad.
         public TapResult TapPad(int padId)
         {
@@ -117,68 +173,87 @@ namespace RainbowFroggy.Core
 
             if (target == null) return TapResult.None;
 
-            if (target.Color == FrogColor)
-            {
-                // Rotten pads look right but are traps.
-                if (target.Type == PadType.Rotten)
-                {
-                    Screen = GameScreen.MisstepGameOver;
-                    if (Score > HighScore) HighScore = Score;
-                    return TapResult.Misstep;
-                }
+            // Landing eligibility:
+            //   Rainbow Pad — always land-able (any frog colour).
+            //   Prism Mode  — any-colour Normal pads are land-able.
+            //   Otherwise   — colour must match.
+            bool canLand = target.Type == PadType.Rainbow
+                        || IsPrismActive
+                        || target.Color == FrogColor;
 
-                // Fever Multiplier: quick consecutive jumps cycle 1→2→3→5 (cap ×5).
-                bool withinWindow = (_gameTime - _lastJumpTime) <= 1.5f;
-                if (withinWindow)
+            if (!canLand)
+            {
+                Screen = GameScreen.MisstepGameOver;
+                if (Score > HighScore) HighScore = Score;
+                return TapResult.Misstep;
+            }
+
+            // Rotten pads are traps regardless of prism or rainbow eligibility.
+            if (target.Type == PadType.Rotten)
+            {
+                Screen = GameScreen.MisstepGameOver;
+                if (Score > HighScore) HighScore = Score;
+                return TapResult.Misstep;
+            }
+
+            // Fever Multiplier: quick consecutive jumps advance the ladder
+            // 1→2→3→5 (capped at 5).  During Prism Mode the ladder advances
+            // by 2 rungs per jump instead of the usual 1.
+            bool withinWindow = (_gameTime - _lastJumpTime) <= 1.5f;
+            if (withinWindow)
+            {
+                int steps = IsPrismActive ? 2 : 1;
+                for (int s = 0; s < steps; s++)
                 {
                     if      (ComboMultiplier == 1) ComboMultiplier = 2;
                     else if (ComboMultiplier == 2) ComboMultiplier = 3;
                     else if (ComboMultiplier == 3) ComboMultiplier = 5;
                     // already 5: stay at 5
                 }
-                else
-                {
-                    ComboMultiplier = 1;
-                }
-
-                // Distance Bonus: +3×combo when target pad is near the top (Y < 0.2).
-                int distanceBonus = target.Y < 0.2f ? 3 * ComboMultiplier : 0;
-                Score += ComboMultiplier + distanceBonus;
-                _lastJumpTime = _gameTime;
-
-                // Capture whether this is a self-tap before updating FrogPadId.
-                bool selfTap = (target.Id == FrogPadId);
-                FrogPadId = target.Id;
-
-                // Self-tap (hop in place): FrogColor stays equal to the landed
-                // pad's colour — required by PlayMode AC5.
-                // Cross-tap: shift to a new random colour and enforce invariant so
-                // the player always has a valid target next tick — required by
-                // EditMode TapPad_ColorShifts_AndMatchingPadExistsImmediately.
-                if (!selfTap)
-                {
-                    PadColor[] palette = PhaseColors.ForPhase(Phase);
-                    PadColor newColor;
-                    do { newColor = palette[_rng.Next(0, palette.Length)]; }
-                    while (newColor == FrogColor);
-                    FrogColor = newColor;
-
-                    // Enforce invariant immediately: a pad of the new colour must
-                    // exist before the next real tick so the player always has a
-                    // valid target.
-                    _field.Tick(0f, FrogColor);
-                }
-
-                FliesThisRun++;
-                JumpCount++;
-                return TapResult.Jump;
             }
             else
             {
-                Screen = GameScreen.MisstepGameOver;
-                if (Score > HighScore) HighScore = Score;
-                return TapResult.Misstep;
+                ComboMultiplier = 1;
             }
+
+            // Distance Bonus: +3×combo when target pad is near the top (Y < 0.2).
+            int distanceBonus = target.Y < 0.2f ? 3 * ComboMultiplier : 0;
+            Score += ComboMultiplier + distanceBonus;
+            _lastJumpTime = _gameTime;
+
+            // Capture whether this is a self-tap before updating FrogPadId.
+            bool selfTap = (target.Id == FrogPadId);
+            FrogPadId = target.Id;
+
+            if (target.Type == PadType.Rainbow)
+            {
+                // Rainbow Pad: always assign a new random palette colour ≠ current,
+                // then enforce the invariant for the new colour.
+                PadColor[] palette = PhaseColors.ForPhase(Phase);
+                PadColor newColor;
+                do { newColor = palette[_rng.Next(0, palette.Length)]; }
+                while (newColor == FrogColor);
+                FrogColor = newColor;
+                _field.Tick(0f, FrogColor);
+            }
+            else if (!selfTap)
+            {
+                // Cross-tap on a Normal pad: shift to a new random colour and
+                // enforce the invariant so the player always has a valid target.
+                PadColor[] palette = PhaseColors.ForPhase(Phase);
+                PadColor newColor;
+                do { newColor = palette[_rng.Next(0, palette.Length)]; }
+                while (newColor == FrogColor);
+                FrogColor = newColor;
+
+                _field.Tick(0f, FrogColor);
+            }
+            // Self-tap on a Normal pad: FrogColor stays equal to the landed
+            // pad's colour — required by PlayMode AC5.
+
+            FliesThisRun++;
+            JumpCount++;
+            return TapResult.Jump;
         }
 
         // ------------------------------------------------------------------ //
@@ -210,10 +285,13 @@ namespace RainbowFroggy.Core
             FliesThisRun    = 0;
             _gameTime       = 0f;
             _lastJumpTime   = float.NegativeInfinity;
+            IsPrismActive   = false;
+            PrismRemaining  = 0f;
 
             FrogColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)];
             _field.Reset();
             _field.Initialize(FrogColor);
+            _powerUps.Reset();
 
             // Frog starts on the first matching pad.
             FrogPadId = -1;
@@ -234,6 +312,5 @@ namespace RainbowFroggy.Core
             if (jumpCount >= 51)  return 2;
             return 1;
         }
-
     }
 }

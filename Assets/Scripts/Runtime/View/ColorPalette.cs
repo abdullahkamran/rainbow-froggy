@@ -17,6 +17,8 @@ namespace RainbowFroggy.View
         public const string ElectricCyanHex = "#00E5FF"; // AC3: Electric Cyan
         public const string ToxicPurpleHex  = "#B429F9"; // AC3: Toxic Purple
         public const string NeonPinkHex     = "#FF3399"; // AC3: Neon Pink
+        public const string RainbowPadHex   = "#FFFFFF"; // Rainbow Pad: white/shimmer
+        public const string PrismPickupHex  = "#FFE033"; // Prism pickup: bright gold
 
         // ---- Named Color constants (AC3) ----
 
@@ -29,6 +31,11 @@ namespace RainbowFroggy.View
         // River / background tint — Indigo Deep Water (AC2: #1A2543).
         public static readonly Color River = new Color(0.102f, 0.145f, 0.263f); // #1A2543
 
+        // Rainbow Pad tint — pure white so the shimmer overlay shows through.
+        public static readonly Color RainbowPad   = Color.white;                // #FFFFFF
+        // Prism pickup tint — bright gold, visible against the river.
+        public static readonly Color PrismPickup  = new Color(1f, 0.878f, 0.2f); // #FFE033
+
         // Internal aliases for For() — keeps the switch readable.
         private static readonly Color _ruby   = RubyRed;
         private static readonly Color _cyan   = ElectricCyan;
@@ -40,12 +47,13 @@ namespace RainbowFroggy.View
         {
             switch (c)
             {
-                case PadColor.Ruby:   return _ruby;
-                case PadColor.Cyan:   return _cyan;
-                case PadColor.Mango:  return _mango;
-                case PadColor.Purple: return _purple;
-                case PadColor.Pink:   return _pink;
-                default:              return Color.white;
+                case PadColor.Ruby:    return _ruby;
+                case PadColor.Cyan:    return _cyan;
+                case PadColor.Mango:   return _mango;
+                case PadColor.Purple:  return _purple;
+                case PadColor.Pink:    return _pink;
+                case PadColor.Rainbow: return RainbowPad;
+                default:               return Color.white;
             }
         }
     }
