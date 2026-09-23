@@ -241,7 +241,7 @@ namespace RainbowFroggy.View
                 {
                     _frogView.SetAnchor(padView.transform.position +
                                         new Vector3(0f, 0.3f, 0f));
-                    _frogView.SetColor(_game.FrogColor);
+                    _frogView.FlashColor(_game.FrogColor);
                 });
             }
             else if (result == TapResult.Misstep)
@@ -285,14 +285,26 @@ namespace RainbowFroggy.View
                 else
                 {
                     bool isLotus = pad.Type == RainbowFroggy.Core.PadType.Lotus;
-                    Vector2 size = isLotus ? new Vector2(2.5f, 2.5f) : new Vector2(1.5f, 0.4f);
-                    var go  = CreateSpriteQuad((isLotus ? "LotusPad_" : "Pad_") + pad.Id, size);
-                    view    = go.AddComponent<PadView>();
-                    var col = go.AddComponent<BoxCollider2D>();
-                    col.size = size;
-                    view.Bind(pad);
+                    GameObject go;
                     if (isLotus)
+                    {
+                        go = CreateSpriteQuad("LotusPad_" + pad.Id, new Vector2(2.5f, 2.5f));
+                        var col = go.AddComponent<BoxCollider2D>();
+                        col.size = new Vector2(2.5f, 2.5f);
                         go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.5f, 0.8f);
+                    }
+                    else
+                    {
+                        go = new GameObject("Pad_" + pad.Id);
+                        var sr     = go.AddComponent<SpriteRenderer>();
+                        sr.sprite  = FrogView.MakeCircleSprite(32);
+                        sr.material = _spriteMat;
+                        go.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
+                        var col = go.AddComponent<CircleCollider2D>();
+                        col.radius = 0.5f;
+                    }
+                    view = go.AddComponent<PadView>();
+                    view.Bind(pad);
                     _padViews[pad.Id] = view;
                 }
             }
@@ -376,7 +388,7 @@ namespace RainbowFroggy.View
 
         private void BuildFrog()
         {
-            var go    = CreateSpriteQuad("Frog", new Vector2(0.6f, 0.6f));
+            var go    = new GameObject("Frog");
             _frogView = go.AddComponent<FrogView>();
             _frogView.SetColor(_game.FrogColor);
             _createdRoots.Add(go);
