@@ -20,13 +20,17 @@ namespace RainbowFroggy.View
     // has no dependency on SceneManager.
     public sealed class GameOverScreen : MonoBehaviour
     {
-        private Text   _headerLabel;
-        private Text   _scoreLabel;
-        private Text   _fliesLabel;
-        private Button _secondChanceButton;
-        private Button _flyMultiplierButton;
-        private Button _restartButton;
-        private Action _onRestart;
+        private Text       _headerLabel;
+        private Text       _scoreLabel;
+        private Text       _fliesLabel;
+        private Button     _secondChanceButton;
+        private Button     _flyMultiplierButton;
+        private Button     _restartButton;
+        private Action     _onRestart;
+
+        // Extended elements wired by InitHighScore (optional; safe to call after Init).
+        private Text       _bestScoreLabel;
+        private GameObject _newHighScoreGO;
 
         // Called by GameBootstrap after all child elements exist.
         public void Init(Text   header,       Text   scoreLabel,    Text   fliesLabel,
@@ -45,6 +49,15 @@ namespace RainbowFroggy.View
             gameObject.SetActive(false);
         }
 
+        // Wire the optional high-score elements created by GameBootstrap.
+        public void InitHighScore(Text bestScoreLabel, GameObject newHighScoreGO)
+        {
+            _bestScoreLabel  = bestScoreLabel;
+            _newHighScoreGO  = newHighScoreGO;
+            if (_newHighScoreGO != null) _newHighScoreGO.SetActive(false);
+        }
+
+        // Original 3-arg Show — preserved so existing tests are unaffected.
         public void Show(GameScreen reason, int score, int flies)
         {
             _headerLabel.text = reason == GameScreen.MisstepGameOver
@@ -52,6 +65,31 @@ namespace RainbowFroggy.View
                 : "Swept Away!";
             _scoreLabel.text = "Score: " + score;
             _fliesLabel.text = "Flies: " + flies;
+
+            if (_bestScoreLabel  != null) _bestScoreLabel.gameObject.SetActive(false);
+            if (_newHighScoreGO  != null) _newHighScoreGO.SetActive(false);
+
+            gameObject.SetActive(true);
+        }
+
+        // Extended Show used by GameBootstrap to display best score and new-high indicator.
+        public void Show(GameScreen reason, int score, int flies, int highScore, bool isNewHigh)
+        {
+            _headerLabel.text = reason == GameScreen.MisstepGameOver
+                ? "Wrong Pad!"
+                : "Swept Away!";
+            _scoreLabel.text = "Score: " + score;
+            _fliesLabel.text = "Flies: " + flies;
+
+            if (_bestScoreLabel != null)
+            {
+                _bestScoreLabel.text = "Best: " + highScore;
+                _bestScoreLabel.gameObject.SetActive(true);
+            }
+
+            if (_newHighScoreGO != null)
+                _newHighScoreGO.SetActive(isNewHigh);
+
             gameObject.SetActive(true);
         }
 

@@ -45,6 +45,9 @@ namespace RainbowFroggy.Core
         public int        ComboMultiplier { get; private set; } = 1;
         // Settable so GameBootstrap can seed it from PlayerPrefs at startup.
         public int        HighScore       { get; set; }
+
+        // True from the moment a game-over beats the previous best until ResetRun().
+        public bool       IsNewHighScore  { get; private set; }
         public PadColor   FrogColor       { get; private set; }
         public int        Phase           { get; private set; } = 1;
 
@@ -163,7 +166,7 @@ namespace RainbowFroggy.Core
                 if (gone.Id == FrogPadId)
                 {
                     Screen = GameScreen.WaterfallGameOver;
-                    if (Score > HighScore) HighScore = Score;
+                    if (Score > HighScore) { HighScore = Score; IsNewHighScore = true; }
                     return;
                 }
             }
@@ -227,7 +230,7 @@ namespace RainbowFroggy.Core
             if (!canLand)
             {
                 Screen = GameScreen.MisstepGameOver;
-                if (Score > HighScore) HighScore = Score;
+                if (Score > HighScore) { HighScore = Score; IsNewHighScore = true; }
                 return TapResult.Misstep;
             }
 
@@ -235,7 +238,7 @@ namespace RainbowFroggy.Core
             if (target.Type == PadType.Rotten)
             {
                 Screen = GameScreen.MisstepGameOver;
-                if (Score > HighScore) HighScore = Score;
+                if (Score > HighScore) { HighScore = Score; IsNewHighScore = true; }
                 return TapResult.Misstep;
             }
 
@@ -336,6 +339,7 @@ namespace RainbowFroggy.Core
             JumpCount       = 0;
             Phase           = 1;
             FliesThisRun    = 0;
+            IsNewHighScore  = false;
             _gameTime       = 0f;
             _lastJumpTime   = float.NegativeInfinity;
             IsPrismActive   = false;
