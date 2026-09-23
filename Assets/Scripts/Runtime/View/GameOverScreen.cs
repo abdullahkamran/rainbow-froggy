@@ -1,34 +1,65 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using RainbowFroggy.Core;
 
 namespace RainbowFroggy.View
 {
-    // Shared game-over panel.  The header text changes based on failure type.
+    // Game-over panel shown after either failure type.
+    //
+    // Required elements (AC7):
+    //   • Failure-type header  ("Wrong Pad!" | "Swept Away!")
+    //   • Score value for the current run
+    //   • Flies earned for the current run
+    //   • Second Chance button  (ad-revive — no-op stub)
+    //   • Fly Multiplier button (ad-double-flies — no-op stub)
+    //   • Restart button        (in-place reset, no scene load)
+    //
     // NOTE: gameObject starts inactive; Init() must be called before Show().
+    // Restart is handled by a callback injected at Init time so this class
+    // has no dependency on SceneManager.
     public sealed class GameOverScreen : MonoBehaviour
     {
         private Text   _headerLabel;
+        private Text   _scoreLabel;
+        private Text   _fliesLabel;
+        private Button _secondChanceButton;
+        private Button _flyMultiplierButton;
         private Button _restartButton;
+        private Action _onRestart;
 
-        // Called by GameBootstrap after constructing the UI children.
-        public void Init(Text header, Button restart)
+        // Called by GameBootstrap after all child elements exist.
+        public void Init(Text   header,       Text   scoreLabel,    Text   fliesLabel,
+                         Button secondChance, Button flyMultiplier, Button restart,
+                         Action onRestart)
         {
-            _headerLabel   = header;
-            _restartButton = restart;
-            _restartButton.onClick.AddListener(OnRestart);
+            _headerLabel         = header;
+            _scoreLabel          = scoreLabel;
+            _fliesLabel          = fliesLabel;
+            _secondChanceButton  = secondChance;
+            _flyMultiplierButton = flyMultiplier;
+            _restartButton       = restart;
+            _onRestart           = onRestart;
+
+            _restartButton.onClick.AddListener(OnRestartClicked);
             gameObject.SetActive(false);
         }
 
-        public void Show(GameScreen reason)
+        public void Show(GameScreen reason, int score, int flies)
         {
             _headerLabel.text = reason == GameScreen.MisstepGameOver
                 ? "Wrong Pad!"
                 : "Swept Away!";
+            _scoreLabel.text = "Score: " + score;
+            _fliesLabel.text = "Flies: " + flies;
             gameObject.SetActive(true);
         }
 
-        private static void OnRestart() => SceneManager.LoadScene(0);
+        public void Hide()
+        {
+            gameObject.SetActive(false);
+        }
+
+        private void OnRestartClicked() => _onRestart?.Invoke();
     }
 }

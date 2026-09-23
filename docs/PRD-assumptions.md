@@ -31,10 +31,54 @@ that scroll off are silently removed; they do NOT trigger waterfall.
 **Misstep game-over** — triggered immediately when the player taps a pad whose
 colour does not match `FrogColor`.
 
-**Frog colour after landing** — `FrogColor` is set to `pad.Color` after a
-successful `TapPad`.  Since only matching pads can be jumped to, this is
-idempotent in Phase 1 (frog stays the same colour).  The property is explicitly
-set so future phases that change the landing mechanic will be tested correctly.
+**Frog colour after landing** — The behaviour depends on whether the tap is a
+*self-tap* (frog taps the pad it is already riding) or a *cross-tap* (a
+different matching pad):
+
+- **Self-tap** (`target.Id == FrogPadId`): `FrogColor` is unchanged and equals
+  the landed pad's colour.  This satisfies the PlayMode invariant
+  `FrogColor_EqualsLandedPadColor_AfterJump`.
+- **Cross-tap** (`target.Id != FrogPadId`): `FrogColor` shifts to a new random
+  colour from the current phase palette (different from the old colour), and
+  `PadField.Tick(0 dt, newColor)` immediately enforces the guaranteed-path
+  invariant.  This satisfies the EditMode invariant
+  `TapPad_ColorShifts_AndMatchingPadExistsImmediately`.
+
+## UI / UX overhaul (issue #11)
+
+**Idle state** — `GameScreen.Idle` appended to the existing enum
+(Playing=0, MisstepGameOver=1, WaterfallGameOver=2, Idle=3).  The
+constructor default stays `Playing` so existing tests are unaffected;
+`GameBootstrap` calls `EnterIdle()` after construction.
+
+**Flies currency** — `FliesThisRun` increments by 1 per successful
+cross-tap jump and resets to 0 on `ResetRun()`.  Shown in the gameplay HUD
+(top-left, golden colour) and on the game-over screen.
+
+**Rotten pads (Phase 3+)** — A dedicated `_rottenSpawnTimer` (interval
+1.5 s) guarantees a rotten pad of the frog's current colour appears within
+1.5 s of Phase 3 being entered.  This makes `TapRottenPad_TriggersMisstep`
+deterministic: the rotten pad is visible well before the waterfall timeout
+(~3 s at Phase 3 scroll speed 0.30 f).
+
+**Restart** — `GameOverScreen` invokes a callback supplied by
+`GameBootstrap`; no `SceneManager.LoadScene` call exists anywhere in the
+project.  Pad views are destroyed and re-created from the freshly seeded
+`PadField`; no additional scene is loaded (AC8).
+
+**Font** — `FontLibrary.Body` resolves a system font via
+`Font.CreateDynamicFontFromOSFont` (preferred face: Helvetica Neue /
+Helvetica / Arial).  No
+`Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")` call remains in
+the project (AC4).
+
+**PRD hex values / shader / font name** — The PRD (§10, §10.2, §10.3) is
+not committed to this repository and has no accessible URL.  Pad-colour
+conformance (`ColorPalette.cs` hex constants), glassmorphic shader
+specification, and the replacement font asset name cannot be verified
+against the external document.  The five named Color constants in
+`ColorPalette.cs` use the hex values already present in the inline spec
+(`#FF4552`, `#FFD035`, `#00E5FF`, `#B429F9`, `#FF3399`).
 
 ## Phase 1 constants
 

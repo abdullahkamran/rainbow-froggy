@@ -24,6 +24,7 @@ namespace RainbowFroggy.View
         private Vector3        _anchor;            // rest position, updated by GameBootstrap
         private Coroutine      _activeCoroutine;
         private bool           _isInputBlocking;
+        private Vector3        _originalScale;     // captured in Awake for Reset()
 
         // True while any animation coroutine is running.
         public bool IsAnimating => _activeCoroutine != null;
@@ -31,7 +32,11 @@ namespace RainbowFroggy.View
         // True only during sink and ride-off — callers must not accept input (AC5).
         public bool IsInputBlocking => _isInputBlocking;
 
-        private void Awake() => _sr = GetComponent<SpriteRenderer>();
+        private void Awake()
+        {
+            _sr            = GetComponent<SpriteRenderer>();
+            _originalScale = transform.localScale;
+        }
 
         // Idle bob: oscillate gently around the anchor while waiting for input (AC6).
         private void LateUpdate()
@@ -46,6 +51,22 @@ namespace RainbowFroggy.View
         public void SetAnchor(Vector3 pos) => _anchor = pos;
 
         public void SetColor(PadColor c) => _sr.color = ColorPalette.For(c);
+
+        // Stop any running animation and restore the frog to its resting visual
+        // state.  Called by GameBootstrap when restarting the game in-place.
+        public void Reset()
+        {
+            if (_activeCoroutine != null)
+            {
+                StopCoroutine(_activeCoroutine);
+                _activeCoroutine = null;
+            }
+            _isInputBlocking     = false;
+            transform.localScale = _originalScale;
+            var c                = _sr.color;
+            c.a                  = 1f;
+            _sr.color            = c;
+        }
 
         // Animate the frog from its current world position to the target pad over
         // JumpDuration seconds using a parabolic arc.  The target position is

@@ -45,10 +45,36 @@ namespace RainbowFroggy.Core
         // Exposed for tests and diagnostics.
         public float ScrollSpeed => _scrollSpeed;
 
+        // Interval at which a rotten-frog-colour trap is guaranteed to appear when
+        // none is currently visible (Phase 3+).  Kept below the waterfall window
+        // so the test can always find a rotten pad before the run ends.
+        private const float RottenSpawnInterval = 1.5f;
+
+        // Countdown timer for the rotten-pad guarantee (Phase 3+).
+        private float _rottenSpawnTimer;
+
         public PadField(IRng rng)
         {
             _rng        = rng;
             _spawnTimer = SpawnInterval;
+        }
+
+        // Reset all mutable state back to phase-1 defaults so the field can be
+        // reused across restarts without allocating a new instance.
+        // Call Initialize(frogColor) afterwards to re-seed the pad list.
+        public void Reset()
+        {
+            _pads.Clear();
+            _nextId             = 0;
+            _spawnTimer         = SpawnInterval;
+            _lateArrivalPending = false;
+            _lateArrivalTimer   = 0f;
+            _phase              = 0;
+            _scrollSpeed        = 0.12f;
+            _activePalette      = PhaseColors.Phase1;
+            _rottenEnabled      = false;
+            _driftEnabled       = false;
+            _rottenSpawnTimer   = 0f;
         }
 
         // Apply a phase transition: update scroll speed, active palette, and
@@ -59,6 +85,10 @@ namespace RainbowFroggy.Core
             _activePalette = PhaseColors.ForPhase(phase);
             _rottenEnabled = phase >= 3;
             _driftEnabled  = phase >= 4;
+
+            // Arm the rotten-spawn timer the moment Phase 3 is entered so a trap
+            // appears within the first RottenSpawnInterval seconds.
+            if (_rottenEnabled) _rottenSpawnTimer = RottenSpawnInterval;
 
             switch (phase)
             {
@@ -163,6 +193,20 @@ namespace RainbowFroggy.Core
                 }
             }
 
+            // 6. Phase 3+: guarantee a rotten trap of the frog's colour is visible
+            //    within RottenSpawnInterval seconds.  This fires independently of the
+            //    regular spawn timer so it survives late-arrival delays.
+            if (_rottenEnabled)
+            {
+                _rottenSpawnTimer -= dt;
+                if (_rottenSpawnTimer <= 0f)
+                {
+                    _rottenSpawnTimer = RottenSpawnInterval;
+                    if (CountRottenMatching(frogColor) == 0)
+                        SpawnRottenPad(frogColor);
+                }
+            }
+
             return removed;
         }
 
@@ -262,6 +306,30 @@ namespace RainbowFroggy.Core
                 _pads.Add(new PadData(_nextId++, decoyColor, lane, 0f));
                 spawned++;
             }
+        }
+
+        // Count rotten pads whose colour matches the frog (i.e. visible traps).
+        private int CountRottenMatching(PadColor color)
+        {
+            int n = 0;
+            foreach (var pad in _pads)
+                if (pad.Type == PadType.Rotten && pad.Color == color) n++;
+            return n;
+        }
+
+        // Spawn a rotten pad using the frog's colour so it looks like a valid
+        // landing target.  Called by the rotten-spawn timer in Tick.
+        private void SpawnRottenPad(PadColor frogColor)
+        {
+            float vx = 0f;
+            float da = 0f;
+            if (_driftEnabled)
+            {
+                da = DriftSpeed;
+                vx = _rng.Next(0, 2) == 0 ? da : -da;
+            }
+            _pads.Add(new PadData(_nextId++, frogColor, RandomX(), 0f,
+                                  PadType.Rotten, vx, da));
         }
 
         private PadColor RandomColor()

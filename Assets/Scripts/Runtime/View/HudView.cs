@@ -3,25 +3,34 @@ using UnityEngine.UI;
 
 namespace RainbowFroggy.View
 {
-    // Displays score, combo multiplier, and high score.
+    // Gameplay HUD: three label regions visible only during active play.
+    //
+    //   Top-left  — Golden Flies counter  ("Flies: N")
+    //   Top-right — High-score display    ("Best: N")
+    //   Centre    — Score + Fever label   ("142 ×3")
+    //
+    // The parent CanvasGroup starts at alpha 0 in the idle state and fades in
+    // when gameplay begins (GameBootstrap drives the fade).
     public sealed class HudView : MonoBehaviour
     {
-        [SerializeField] private Text _label;
-        [SerializeField] private Text _highScoreLabel;
+        private Text _fliesLabel;
+        private Text _scoreLabel;
+        private Text _highScoreLabel;
 
-        // Called by GameBootstrap after constructing the labels.
-        public void Init(Text label, Text highScoreLabel)
+        // Called by GameBootstrap after constructing the three labels.
+        public void Init(Text fliesLabel, Text scoreLabel, Text highScoreLabel)
         {
-            _label          = label;
+            _fliesLabel     = fliesLabel;
+            _scoreLabel     = scoreLabel;
             _highScoreLabel = highScoreLabel;
         }
 
-        public void SetScore(int score, int combo, int highScore)
+        // Update every frame while in the Playing state.
+        public void SetData(int score, int combo, int highScore, int flies)
         {
-            if (_label != null)
-                _label.text = "Score: " + score + "   x" + combo;
-            if (_highScoreLabel != null)
-                _highScoreLabel.text = "Best: " + highScore;
+            if (_fliesLabel     != null) _fliesLabel.text     = "Flies: " + flies;
+            if (_scoreLabel     != null) _scoreLabel.text     = score + " \xd7" + combo;
+            if (_highScoreLabel != null) _highScoreLabel.text = "Best: " + highScore;
         }
     }
 }
