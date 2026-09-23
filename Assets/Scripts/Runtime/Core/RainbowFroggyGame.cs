@@ -7,6 +7,7 @@ namespace RainbowFroggy.Core
         Playing,
         MisstepGameOver,    // tapped a pad whose colour didn't match the frog, or a Rotten pad
         WaterfallGameOver,  // the frog's own pad reached the bottom before a jump
+        Idle,               // main-menu / idle state — frog sits on starting pad, no scrolling
     }
 
     public enum TapResult
@@ -38,6 +39,9 @@ namespace RainbowFroggy.Core
         public int        HighScore       { get; set; }
         public PadColor   FrogColor       { get; private set; }
         public int        Phase           { get; private set; } = 1;
+
+        // Golden flies earned in the current run; incremented by 1 per successful jump.
+        public int        FliesThisRun    { get; private set; }
 
         // Total number of successful jumps made in this session.
         public int        JumpCount       { get; private set; }
@@ -141,20 +145,31 @@ namespace RainbowFroggy.Core
                 int distanceBonus = target.Y < 0.2f ? 3 * ComboMultiplier : 0;
                 Score += ComboMultiplier + distanceBonus;
                 _lastJumpTime = _gameTime;
+
+                // Capture whether this is a self-tap before updating FrogPadId.
+                bool selfTap = (target.Id == FrogPadId);
                 FrogPadId = target.Id;
 
-                // Shift to a new random color different from the current one.
-                PadColor[] palette = PhaseColors.ForPhase(Phase);
-                PadColor newColor;
-                do { newColor = palette[_rng.Next(0, palette.Length)]; }
-                while (newColor == FrogColor);
-                FrogColor = newColor;
+                // Self-tap (hop in place): FrogColor stays equal to the landed
+                // pad's colour — required by PlayMode AC5.
+                // Cross-tap: shift to a new random colour and enforce invariant so
+                // the player always has a valid target next tick — required by
+                // EditMode TapPad_ColorShifts_AndMatchingPadExistsImmediately.
+                if (!selfTap)
+                {
+                    PadColor[] palette = PhaseColors.ForPhase(Phase);
+                    PadColor newColor;
+                    do { newColor = palette[_rng.Next(0, palette.Length)]; }
+                    while (newColor == FrogColor);
+                    FrogColor = newColor;
 
-                // Enforce invariant immediately: a pad of the new colour must
-                // exist before the next real tick so the player always has a valid
-                // target.
-                _field.Tick(0f, FrogColor);
+                    // Enforce invariant immediately: a pad of the new colour must
+                    // exist before the next real tick so the player always has a
+                    // valid target.
+                    _field.Tick(0f, FrogColor);
+                }
 
+                FliesThisRun++;
                 JumpCount++;
                 return TapResult.Jump;
             }
@@ -164,6 +179,50 @@ namespace RainbowFroggy.Core
                 if (Score > HighScore) HighScore = Score;
                 return TapResult.Misstep;
             }
+        }
+
+        // ------------------------------------------------------------------ //
+        // Idle / restart helpers
+        // ------------------------------------------------------------------ //
+
+        // Enter the idle/menu state.  Called by GameBootstrap at startup and
+        // after a restart.  Tick() is a no-op while Idle.
+        public void EnterIdle()
+        {
+            Screen = GameScreen.Idle;
+        }
+
+        // Transition from Idle → Playing.  No-op if not currently Idle.
+        public void StartRun()
+        {
+            if (Screen != GameScreen.Idle) return;
+            Screen = GameScreen.Playing;
+        }
+
+        // Reset all run state (score, phase, flies, pad field) and re-enter Idle.
+        // The HighScore carry-over is preserved.
+        public void ResetRun()
+        {
+            Score           = 0;
+            ComboMultiplier = 1;
+            JumpCount       = 0;
+            Phase           = 1;
+            FliesThisRun    = 0;
+            _gameTime       = 0f;
+            _lastJumpTime   = float.NegativeInfinity;
+
+            FrogColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)];
+            _field.Reset();
+            _field.Initialize(FrogColor);
+
+            // Frog starts on the first matching pad.
+            FrogPadId = -1;
+            foreach (var pad in _field.Pads)
+            {
+                if (pad.Color == FrogColor) { FrogPadId = pad.Id; break; }
+            }
+
+            Screen = GameScreen.Idle;
         }
 
         // ------------------------------------------------------------------ //

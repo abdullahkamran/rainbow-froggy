@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,12 +16,30 @@ namespace RainbowFroggy.View
         private FrogView          _frogView;
         private HudView           _hud;
         private GameOverScreen    _gameOverScreen;
+        private MenuChrome        _menuChrome;
+        private BottomNavBar      _bottomNavBar;
+
+        // CanvasGroups driven by state transitions.
+        private CanvasGroup _hudCG;
+        private CanvasGroup _menuChromeCG;
+        private CanvasGroup _bottomNavCG;
 
         // padId → PadView
         private readonly Dictionary<int, PadView> _padViews =
             new Dictionary<int, PadView>();
 
         private Material _spriteMat;
+
+        private const float UiFadeDuration = 0.3f;
+
+        // Test seams: expose model state and key components for assertions and teardown.
+        public GameScreen  Screen         => _game != null ? _game.Screen : GameScreen.Playing;
+        public int         Score          => _game != null ? _game.Score  : 0;
+        public GameOverScreen GameOverScreen => _gameOverScreen;
+
+        // All root-level GameObjects created in Start(); tests use this for teardown.
+        public IReadOnlyList<GameObject> CreatedRoots => _createdRoots;
+        private readonly List<GameObject> _createdRoots = new List<GameObject>();
 
         // ------------------------------------------------------------------ //
         // Unity lifecycle
@@ -33,37 +52,90 @@ namespace RainbowFroggy.View
             _game = new RainbowFroggyGame(
                 new SeededRng(UnityEngine.Random.Range(0, int.MaxValue)));
             _game.HighScore = PlayerPrefs.GetInt("HighScore", 0);
+            _game.EnterIdle();
 
             ConfigureCamera();
             BuildBackground();
             BuildFrog();
             BuildHud();
+            BuildMenuAndNav();
             BuildGameOverScreen();
             SyncAllPads();
+
+            // Start in idle: HUD hidden, chrome + nav visible.
+            SetCanvasGroupState(_hudCG,        alpha: 0f);
+            SetCanvasGroupState(_menuChromeCG, alpha: 1f);
+            SetCanvasGroupState(_bottomNavCG,  alpha: 1f);
         }
 
         private void Update()
         {
+            // Only tick and handle gameplay input while in Playing state.
             if (_game.Screen != GameScreen.Playing) return;
 
             _game.Tick(Time.deltaTime);
 
             // Check for waterfall BEFORE SyncAllPads — the frog's pad view is still
-            // alive this frame; SyncAllPads destroys it in the same pass (AC4).
+            // alive this frame; SyncAllPads destroys it in the same pass.
             if (_game.Screen == GameScreen.WaterfallGameOver)
             {
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
                 _frogView.RideDown(worldSpeed, () =>
-                {
-                    _gameOverScreen.Show(GameScreen.WaterfallGameOver);
-                });
+                    _gameOverScreen.Show(_game.Screen, _game.Score, _game.FliesThisRun));
             }
 
             SyncAllPads();
-            _hud.SetScore(_game.Score, _game.ComboMultiplier, _game.HighScore);
-
+            _hud.SetData(_game.Score, _game.ComboMultiplier, _game.HighScore,
+                         _game.FliesThisRun);
             HandleInput();
+        }
+
+        // ------------------------------------------------------------------ //
+        // State transitions
+        // ------------------------------------------------------------------ //
+
+        // Called by MenuChrome when the tap zone is pressed.
+        private void OnMenuTapZone()
+        {
+            if (_game.Screen != GameScreen.Idle) return;
+            _game.StartRun();
+            StartCoroutine(FadeCanvasGroup(_menuChromeCG, 0f, UiFadeDuration));
+            StartCoroutine(FadeCanvasGroup(_bottomNavCG,  0f, UiFadeDuration));
+            StartCoroutine(FadeCanvasGroup(_hudCG,        1f, UiFadeDuration));
+        }
+
+        // Called by GameOverScreen's Restart button.
+        private void OnRestart()
+        {
+            _gameOverScreen.Hide();
+
+            // Destroy all pad views so SyncAllPads re-creates them from the
+            // freshly seeded field.
+            foreach (var kv in _padViews)
+                Destroy(kv.Value.gameObject);
+            _padViews.Clear();
+
+            // Reset model state (returns to Idle, re-seeds pads).
+            _game.ResetRun();
+
+            // Reset frog visual state (stop any lingering death animation).
+            _frogView.Reset();
+            _frogView.SetColor(_game.FrogColor);
+
+            SyncAllPads();
+
+            // Position frog on its starting pad.
+            if (_game.FrogPadId != -1 &&
+                _padViews.TryGetValue(_game.FrogPadId, out var fp))
+            {
+                _frogView.SetAnchor(fp.transform.position + new Vector3(0f, 0.3f, 0f));
+            }
+
+            // Restore idle chrome immediately (no fade on restart).
+            SetCanvasGroupState(_hudCG,        alpha: 0f);
+            SetCanvasGroupState(_menuChromeCG, alpha: 1f);
+            SetCanvasGroupState(_bottomNavCG,  alpha: 1f);
         }
 
         // ------------------------------------------------------------------ //
@@ -72,7 +144,7 @@ namespace RainbowFroggy.View
 
         private void HandleInput()
         {
-            // Block all input while a sink or ride-off animation is in progress (AC5).
+            // Block all input while a sink or ride-off animation is in progress.
             if (_frogView.IsInputBlocking) return;
 
             bool    tapped    = false;
@@ -106,7 +178,7 @@ namespace RainbowFroggy.View
             if (result == TapResult.Jump)
             {
                 // Dispatch the jump tween immediately.  Color and anchor are updated
-                // in the landing callback so they are invisible until the frog arrives (AC2).
+                // in the landing callback so they are invisible until the frog arrives.
                 _frogView.JumpTo(padView.transform, () =>
                 {
                     _frogView.SetAnchor(padView.transform.position +
@@ -116,13 +188,12 @@ namespace RainbowFroggy.View
             }
             else if (result == TapResult.Misstep)
             {
-                // Jump to the wrong pad, then sink, then show game-over (AC3).
+                // Jump to the wrong pad, then sink, then show game-over.
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 _frogView.JumpTo(padView.transform, () =>
                     _frogView.Sink(() =>
-                    {
-                        _gameOverScreen.Show(GameScreen.MisstepGameOver);
-                    }));
+                        _gameOverScreen.Show(GameScreen.MisstepGameOver,
+                                             _game.Score, _game.FliesThisRun)));
             }
         }
 
@@ -189,11 +260,12 @@ namespace RainbowFroggy.View
                 go.tag  = "MainCamera";
                 cam     = go.AddComponent<Camera>();
                 go.AddComponent<AudioListener>();
+                _createdRoots.Add(go);
             }
-            cam.orthographic     = true;
-            cam.orthographicSize = 6f;
-            cam.clearFlags       = CameraClearFlags.SolidColor;
-            cam.backgroundColor  = ColorPalette.River;
+            cam.orthographic       = true;
+            cam.orthographicSize   = 6f;
+            cam.clearFlags         = CameraClearFlags.SolidColor;
+            cam.backgroundColor    = ColorPalette.River;
             cam.transform.position = new Vector3(0f, 0f, -10f);
         }
 
@@ -202,6 +274,7 @@ namespace RainbowFroggy.View
             var go = CreateSpriteQuad("Background", new Vector2(9f, 13f));
             go.GetComponent<SpriteRenderer>().color        = ColorPalette.River;
             go.GetComponent<SpriteRenderer>().sortingOrder = -10;
+            _createdRoots.Add(go);
         }
 
         private void BuildFrog()
@@ -209,7 +282,12 @@ namespace RainbowFroggy.View
             var go    = CreateSpriteQuad("Frog", new Vector2(0.6f, 0.6f));
             _frogView = go.AddComponent<FrogView>();
             _frogView.SetColor(_game.FrogColor);
+            _createdRoots.Add(go);
         }
+
+        // ------------------------------------------------------------------
+        // Gameplay HUD (top-left flies, top-right high-score, centre score×combo)
+        // ------------------------------------------------------------------
 
         private void BuildHud()
         {
@@ -218,44 +296,285 @@ namespace RainbowFroggy.View
             c.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.AddComponent<CanvasScaler>();
             canvas.AddComponent<GraphicRaycaster>();
+            _createdRoots.Add(canvas);
 
-            var hudGO = new GameObject("HUD");
+            var hudGO = new GameObject("GameplayHUD");
             hudGO.transform.SetParent(canvas.transform, false);
-            _hud = hudGO.AddComponent<HudView>();
+            _hudCG = hudGO.AddComponent<CanvasGroup>();
+            _hud   = hudGO.AddComponent<HudView>();
 
-            var scoreGO = new GameObject("ScoreLabel");
-            scoreGO.transform.SetParent(hudGO.transform, false);
-            var scoreRT = scoreGO.AddComponent<RectTransform>();
-            scoreRT.anchorMin        = new Vector2(0f, 1f);
-            scoreRT.anchorMax        = new Vector2(0f, 1f);
-            scoreRT.pivot            = new Vector2(0f, 1f);
-            scoreRT.anchoredPosition = new Vector2(20f, -20f);
-            scoreRT.sizeDelta        = new Vector2(260f, 50f);
+            // Top-left: Golden Flies counter.
+            var fliesGO            = new GameObject("FliesLabel");
+            fliesGO.transform.SetParent(hudGO.transform, false);
+            var fliesRT            = fliesGO.AddComponent<RectTransform>();
+            fliesRT.anchorMin      = new Vector2(0f, 1f);
+            fliesRT.anchorMax      = new Vector2(0f, 1f);
+            fliesRT.pivot          = new Vector2(0f, 1f);
+            fliesRT.anchoredPosition = new Vector2(20f, -20f);
+            fliesRT.sizeDelta      = new Vector2(220f, 50f);
+            var fliesText          = fliesGO.AddComponent<Text>();
+            fliesText.font         = FontLibrary.Body;
+            fliesText.fontSize     = 28;
+            fliesText.color        = new Color(1f, 0.85f, 0.2f); // golden
+            fliesText.text         = "Flies: 0";
 
-            var scoreLabel      = scoreGO.AddComponent<Text>();
-            scoreLabel.font     = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            scoreLabel.fontSize = 28;
-            scoreLabel.color    = Color.white;
-            scoreLabel.text     = "Score: 0   x1";
-
-            var bestGO = new GameObject("HighScoreLabel");
+            // Top-right: High score.
+            var bestGO             = new GameObject("HighScoreLabel");
             bestGO.transform.SetParent(hudGO.transform, false);
-            var bestRT = bestGO.AddComponent<RectTransform>();
-            bestRT.anchorMin        = new Vector2(1f, 1f);
-            bestRT.anchorMax        = new Vector2(1f, 1f);
-            bestRT.pivot            = new Vector2(1f, 1f);
+            var bestRT             = bestGO.AddComponent<RectTransform>();
+            bestRT.anchorMin       = new Vector2(1f, 1f);
+            bestRT.anchorMax       = new Vector2(1f, 1f);
+            bestRT.pivot           = new Vector2(1f, 1f);
             bestRT.anchoredPosition = new Vector2(-20f, -20f);
-            bestRT.sizeDelta        = new Vector2(200f, 50f);
+            bestRT.sizeDelta       = new Vector2(220f, 50f);
+            var bestText           = bestGO.AddComponent<Text>();
+            bestText.font          = FontLibrary.Body;
+            bestText.fontSize      = 28;
+            bestText.color         = Color.white;
+            bestText.alignment     = TextAnchor.UpperRight;
+            bestText.text          = "Best: 0";
 
-            var bestLabel           = bestGO.AddComponent<Text>();
-            bestLabel.font          = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            bestLabel.fontSize      = 28;
-            bestLabel.color         = Color.white;
-            bestLabel.alignment     = TextAnchor.UpperRight;
-            bestLabel.text          = "Best: 0";
+            // Centre: Score + Fever Multiplier ("142 ×3").
+            var scoreGO            = new GameObject("ScoreLabel");
+            scoreGO.transform.SetParent(hudGO.transform, false);
+            var scoreRT            = scoreGO.AddComponent<RectTransform>();
+            scoreRT.anchorMin      = new Vector2(0.5f, 1f);
+            scoreRT.anchorMax      = new Vector2(0.5f, 1f);
+            scoreRT.pivot          = new Vector2(0.5f, 1f);
+            scoreRT.anchoredPosition = new Vector2(0f, -20f);
+            scoreRT.sizeDelta      = new Vector2(280f, 50f);
+            var scoreText          = scoreGO.AddComponent<Text>();
+            scoreText.font         = FontLibrary.Body;
+            scoreText.fontSize     = 32;
+            scoreText.fontStyle    = FontStyle.Bold;
+            scoreText.color        = Color.white;
+            scoreText.alignment    = TextAnchor.UpperCenter;
+            scoreText.text         = "0 \xd71";
 
-            _hud.Init(scoreLabel, bestLabel);
+            _hud.Init(fliesText, scoreText, bestText);
         }
+
+        // ------------------------------------------------------------------
+        // Menu canvas: idle chrome + bottom nav bar + bottom sheets
+        // ------------------------------------------------------------------
+
+        private void BuildMenuAndNav()
+        {
+            var canvas = new GameObject("MenuCanvas");
+            var c      = canvas.AddComponent<Canvas>();
+            c.renderMode   = RenderMode.ScreenSpaceOverlay;
+            c.sortingOrder = 5;
+            canvas.AddComponent<CanvasScaler>();
+            canvas.AddComponent<GraphicRaycaster>();
+            _createdRoots.Add(canvas);
+
+            // ---- Menu chrome (title + tap zone) ----
+            var chromeGO = new GameObject("MenuChrome");
+            chromeGO.transform.SetParent(canvas.transform, false);
+            _menuChromeCG = chromeGO.AddComponent<CanvasGroup>();
+            var chromeRT  = chromeGO.AddComponent<RectTransform>();
+            chromeRT.anchorMin = Vector2.zero;
+            chromeRT.anchorMax = Vector2.one;
+            chromeRT.offsetMin = Vector2.zero;
+            chromeRT.offsetMax = Vector2.zero;
+
+            // Title text.
+            var titleGO            = new GameObject("TitleText");
+            titleGO.transform.SetParent(chromeGO.transform, false);
+            var titleRT            = titleGO.AddComponent<RectTransform>();
+            titleRT.anchorMin      = new Vector2(0.1f, 0.60f);
+            titleRT.anchorMax      = new Vector2(0.9f, 0.80f);
+            titleRT.offsetMin      = Vector2.zero;
+            titleRT.offsetMax      = Vector2.zero;
+            var titleText          = titleGO.AddComponent<Text>();
+            titleText.font         = FontLibrary.Body;
+            titleText.fontSize     = 52;
+            titleText.fontStyle    = FontStyle.Bold;
+            titleText.alignment    = TextAnchor.MiddleCenter;
+            titleText.color        = Color.white;
+            titleText.text         = "RAINBOW FROGGY";
+
+            // Tap-to-play prompt.
+            var promptGO           = new GameObject("TapPrompt");
+            promptGO.transform.SetParent(chromeGO.transform, false);
+            var promptRT           = promptGO.AddComponent<RectTransform>();
+            promptRT.anchorMin     = new Vector2(0.2f, 0.42f);
+            promptRT.anchorMax     = new Vector2(0.8f, 0.52f);
+            promptRT.offsetMin     = Vector2.zero;
+            promptRT.offsetMax     = Vector2.zero;
+            var promptText         = promptGO.AddComponent<Text>();
+            promptText.font        = FontLibrary.Body;
+            promptText.fontSize    = 28;
+            promptText.alignment   = TextAnchor.MiddleCenter;
+            promptText.color       = new Color(1f, 1f, 1f, 0.7f);
+            promptText.text        = "TAP TO PLAY";
+
+            // Full-screen transparent tap-zone button (sits behind the title text
+            // in the hierarchy so the title renders on top).
+            var tapZoneGO           = new GameObject("TapZone");
+            tapZoneGO.transform.SetParent(chromeGO.transform, false);
+            tapZoneGO.transform.SetAsFirstSibling();
+            var tapZoneRT           = tapZoneGO.AddComponent<RectTransform>();
+            tapZoneRT.anchorMin     = Vector2.zero;
+            tapZoneRT.anchorMax     = Vector2.one;
+            tapZoneRT.offsetMin     = Vector2.zero;
+            tapZoneRT.offsetMax     = Vector2.zero;
+            var tapZoneImg          = tapZoneGO.AddComponent<Image>();
+            tapZoneImg.color        = new Color(0f, 0f, 0f, 0f); // fully transparent
+            var tapZoneBtn          = tapZoneGO.AddComponent<Button>();
+            var tapZoneCols         = tapZoneBtn.colors;
+            tapZoneCols.normalColor = new Color(0f, 0f, 0f, 0f);
+            tapZoneBtn.colors       = tapZoneCols;
+
+            _menuChrome = chromeGO.AddComponent<MenuChrome>();
+            _menuChrome.Init(tapZoneBtn);
+            _menuChrome.OnTapZonePressed = OnMenuTapZone;
+
+            // ---- Bottom nav bar ----
+            var navGO    = new GameObject("BottomNavBar");
+            navGO.transform.SetParent(canvas.transform, false);
+            _bottomNavCG = navGO.AddComponent<CanvasGroup>();
+            var navRT    = navGO.AddComponent<RectTransform>();
+            navRT.anchorMin      = new Vector2(0f, 0f);
+            navRT.anchorMax      = new Vector2(1f, 0f);
+            navRT.pivot          = new Vector2(0.5f, 0f);
+            navRT.anchoredPosition = Vector2.zero;
+            navRT.sizeDelta      = new Vector2(0f, 80f);
+            var navBg            = navGO.AddComponent<Image>();
+            navBg.color          = new Color(0.05f, 0.08f, 0.15f, 0.92f);
+
+            // ---- Bottom sheets (built before wiring nav buttons) ----
+            var sheetCanvas = new GameObject("BottomSheetCanvas");
+            var sc          = sheetCanvas.AddComponent<Canvas>();
+            sc.renderMode   = RenderMode.ScreenSpaceOverlay;
+            sc.sortingOrder = 6;
+            sheetCanvas.AddComponent<CanvasScaler>();
+            sheetCanvas.AddComponent<GraphicRaycaster>();
+            _createdRoots.Add(sheetCanvas);
+
+            var wardrobeSheet    = BuildBottomSheet(sheetCanvas.transform, "Wardrobe",    "Wardrobe");
+            var leaderboardSheet = BuildBottomSheet(sheetCanvas.transform, "Leaderboard", "Leaderboard");
+            var settingsSheet    = BuildBottomSheet(sheetCanvas.transform, "Settings",    "Settings");
+
+            // ---- Nav buttons ----
+            Button wardrobeBtn    = BuildNavButton(navGO.transform, "Wardrobe",    0);
+            Button leaderboardBtn = BuildNavButton(navGO.transform, "Leaderboard", 1);
+            Button settingsBtn    = BuildNavButton(navGO.transform, "Settings",    2);
+
+            _bottomNavBar = navGO.AddComponent<BottomNavBar>();
+            _bottomNavBar.Init(wardrobeBtn,    wardrobeSheet,
+                               leaderboardBtn, leaderboardSheet,
+                               settingsBtn,    settingsSheet);
+        }
+
+        // Create one nav button at column index (0 = left, 1 = mid, 2 = right).
+        private Button BuildNavButton(Transform parent, string label, int col)
+        {
+            float xMin = col / 3f;
+            float xMax = (col + 1) / 3f;
+
+            var go  = new GameObject("NavBtn_" + label);
+            go.transform.SetParent(parent, false);
+            var rt  = go.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(xMin, 0f);
+            rt.anchorMax = new Vector2(xMax, 1f);
+            rt.offsetMin = new Vector2(4f,  4f);
+            rt.offsetMax = new Vector2(-4f, -4f);
+
+            var img   = go.AddComponent<Image>();
+            img.color = new Color(0.12f, 0.18f, 0.30f, 0.85f);
+
+            var btn   = go.AddComponent<Button>();
+
+            var lblGO = new GameObject("Label");
+            lblGO.transform.SetParent(go.transform, false);
+            var lblRT = lblGO.AddComponent<RectTransform>();
+            lblRT.anchorMin = Vector2.zero;
+            lblRT.anchorMax = Vector2.one;
+            lblRT.offsetMin = Vector2.zero;
+            lblRT.offsetMax = Vector2.zero;
+            var txt         = lblGO.AddComponent<Text>();
+            txt.font        = FontLibrary.Body;
+            txt.fontSize    = 20;
+            txt.alignment   = TextAnchor.MiddleCenter;
+            txt.color       = Color.white;
+            txt.text        = label;
+
+            return btn;
+        }
+
+        // Create a slide-up bottom-sheet panel with a title and close button.
+        private BottomSheet BuildBottomSheet(Transform canvasParent,
+                                             string goName, string title)
+        {
+            const float sheetHeight = 360f;
+
+            var go  = new GameObject("Sheet_" + goName);
+            go.transform.SetParent(canvasParent, false);
+            var rt  = go.AddComponent<RectTransform>();
+            rt.anchorMin      = new Vector2(0f, 0f);
+            rt.anchorMax      = new Vector2(1f, 0f);
+            rt.pivot          = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, -sheetHeight); // off-screen
+            rt.sizeDelta      = new Vector2(0f, sheetHeight);
+
+            var bg    = go.AddComponent<Image>();
+            bg.color  = new Color(0.08f, 0.12f, 0.22f, 0.96f);
+
+            // Title.
+            var titleGO  = new GameObject("Title");
+            titleGO.transform.SetParent(go.transform, false);
+            var titleRT  = titleGO.AddComponent<RectTransform>();
+            titleRT.anchorMin = new Vector2(0.1f, 0.75f);
+            titleRT.anchorMax = new Vector2(0.9f, 0.95f);
+            titleRT.offsetMin = Vector2.zero;
+            titleRT.offsetMax = Vector2.zero;
+            var titleTxt      = titleGO.AddComponent<Text>();
+            titleTxt.font      = FontLibrary.Body;
+            titleTxt.fontSize  = 32;
+            titleTxt.fontStyle = FontStyle.Bold;
+            titleTxt.alignment = TextAnchor.MiddleCenter;
+            titleTxt.color     = Color.white;
+            titleTxt.text      = title;
+
+            // Close button.
+            var closeBtnGO = new GameObject("CloseBtn");
+            closeBtnGO.transform.SetParent(go.transform, false);
+            var closeBtnRT       = closeBtnGO.AddComponent<RectTransform>();
+            closeBtnRT.anchorMin = new Vector2(0.35f, 0.08f);
+            closeBtnRT.anchorMax = new Vector2(0.65f, 0.22f);
+            closeBtnRT.offsetMin = Vector2.zero;
+            closeBtnRT.offsetMax = Vector2.zero;
+            var closeBtnImg      = closeBtnGO.AddComponent<Image>();
+            closeBtnImg.color    = new Color(0.2f, 0.25f, 0.4f, 0.9f);
+            var closeBtn         = closeBtnGO.AddComponent<Button>();
+
+            var closeLblGO  = new GameObject("Label");
+            closeLblGO.transform.SetParent(closeBtnGO.transform, false);
+            var closeLblRT  = closeLblGO.AddComponent<RectTransform>();
+            closeLblRT.anchorMin = Vector2.zero;
+            closeLblRT.anchorMax = Vector2.one;
+            closeLblRT.offsetMin = Vector2.zero;
+            closeLblRT.offsetMax = Vector2.zero;
+            var closeLblTxt      = closeLblGO.AddComponent<Text>();
+            closeLblTxt.font      = FontLibrary.Body;
+            closeLblTxt.fontSize  = 22;
+            closeLblTxt.alignment = TextAnchor.MiddleCenter;
+            closeLblTxt.color     = Color.white;
+            closeLblTxt.text      = "Close";
+
+            var sheet = go.AddComponent<BottomSheet>();
+            sheet.Init(rt, closedY: -sheetHeight, openY: 0f);
+
+            // Wire the close button now that sheet is initialised.
+            closeBtn.onClick.AddListener(sheet.Close);
+
+            return sheet;
+        }
+
+        // ------------------------------------------------------------------
+        // Game-over screen
+        // ------------------------------------------------------------------
 
         private void BuildGameOverScreen()
         {
@@ -265,62 +584,147 @@ namespace RainbowFroggy.View
             c.sortingOrder = 10;
             canvas.AddComponent<CanvasScaler>();
             canvas.AddComponent<GraphicRaycaster>();
+            _createdRoots.Add(canvas);
 
-            var panelGO = new GameObject("GameOverPanel");
+            // Dark full-screen glassmorphic overlay.
+            var panelGO  = new GameObject("GameOverPanel");
             panelGO.transform.SetParent(canvas.transform, false);
-            var panelRT = panelGO.AddComponent<RectTransform>();
+            var panelRT  = panelGO.AddComponent<RectTransform>();
             panelRT.anchorMin = Vector2.zero;
             panelRT.anchorMax = Vector2.one;
             panelRT.offsetMin = Vector2.zero;
             panelRT.offsetMax = Vector2.zero;
-            var img           = panelGO.AddComponent<Image>();
-            img.color         = new Color(0f, 0f, 0f, 0.75f);
+            var panelImg = panelGO.AddComponent<Image>();
+            panelImg.color = new Color(0.04f, 0.06f, 0.12f, 0.88f);
 
             _gameOverScreen = panelGO.AddComponent<GameOverScreen>();
 
-            var headerGO = new GameObject("Header");
-            headerGO.transform.SetParent(panelGO.transform, false);
-            var headerRT        = headerGO.AddComponent<RectTransform>();
-            headerRT.anchorMin  = new Vector2(0.1f, 0.55f);
-            headerRT.anchorMax  = new Vector2(0.9f, 0.75f);
-            headerRT.offsetMin  = Vector2.zero;
-            headerRT.offsetMax  = Vector2.zero;
-            var headerText      = headerGO.AddComponent<Text>();
-            headerText.font     = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            headerText.fontSize = 48;
-            headerText.alignment = TextAnchor.MiddleCenter;
-            headerText.color    = Color.white;
-            headerText.text     = "";
+            // Failure-type header.
+            var headerText = MakeLabel(panelGO.transform, "Header",
+                new Vector2(0.1f, 0.72f), new Vector2(0.9f, 0.87f),
+                fontSize: 52, bold: true, align: TextAnchor.MiddleCenter);
+            headerText.text = "";
 
-            var btnGO = new GameObject("RestartButton");
-            btnGO.transform.SetParent(panelGO.transform, false);
-            var btnRT     = btnGO.AddComponent<RectTransform>();
-            btnRT.anchorMin = new Vector2(0.3f, 0.35f);
-            btnRT.anchorMax = new Vector2(0.7f, 0.50f);
-            btnRT.offsetMin = Vector2.zero;
-            btnRT.offsetMax = Vector2.zero;
-            var btnImg    = btnGO.AddComponent<Image>();
-            btnImg.color  = new Color(0.2f, 0.6f, 0.2f);
-            var btn       = btnGO.AddComponent<Button>();
+            // Score.
+            var scoreText = MakeLabel(panelGO.transform, "ScoreLabel",
+                new Vector2(0.15f, 0.59f), new Vector2(0.85f, 0.69f),
+                fontSize: 34, bold: false, align: TextAnchor.MiddleCenter);
+            scoreText.text = "Score: 0";
 
-            var btnLabelGO       = new GameObject("Label");
-            btnLabelGO.transform.SetParent(btnGO.transform, false);
-            var btnLabelRT       = btnLabelGO.AddComponent<RectTransform>();
-            btnLabelRT.anchorMin = Vector2.zero;
-            btnLabelRT.anchorMax = Vector2.one;
-            btnLabelRT.offsetMin = Vector2.zero;
-            btnLabelRT.offsetMax = Vector2.zero;
-            var btnText          = btnLabelGO.AddComponent<Text>();
-            btnText.font         = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            btnText.fontSize     = 32;
-            btnText.alignment    = TextAnchor.MiddleCenter;
-            btnText.color        = Color.white;
-            btnText.text         = "Restart";
+            // Flies earned.
+            var fliesText = MakeLabel(panelGO.transform, "FliesLabel",
+                new Vector2(0.15f, 0.48f), new Vector2(0.85f, 0.58f),
+                fontSize: 30, bold: false, align: TextAnchor.MiddleCenter);
+            fliesText.color = new Color(1f, 0.85f, 0.2f); // golden
+            fliesText.text  = "Flies: 0";
 
-            // Wire up the screen AFTER all children exist.
-            _gameOverScreen.Init(headerText, btn);
+            // Second Chance button.
+            var secondChanceBtn = MakeButton(panelGO.transform, "SecondChance",
+                new Vector2(0.15f, 0.36f), new Vector2(0.85f, 0.46f),
+                "Second Chance", new Color(0.1f, 0.35f, 0.6f, 0.9f));
+
+            // Fly Multiplier button.
+            var flyMultiplierBtn = MakeButton(panelGO.transform, "FlyMultiplier",
+                new Vector2(0.15f, 0.24f), new Vector2(0.85f, 0.34f),
+                "Fly Multiplier", new Color(0.55f, 0.25f, 0.05f, 0.9f));
+
+            // Restart button.
+            var restartBtn = MakeButton(panelGO.transform, "RestartButton",
+                new Vector2(0.15f, 0.10f), new Vector2(0.85f, 0.21f),
+                "Restart", new Color(0.1f, 0.42f, 0.18f, 0.9f));
+
+            _gameOverScreen.Init(headerText, scoreText, fliesText,
+                                 secondChanceBtn, flyMultiplierBtn, restartBtn,
+                                 OnRestart);
         }
 
+        // ------------------------------------------------------------------ //
+        // UI builder helpers
+        // ------------------------------------------------------------------ //
+
+        // Create a Text label anchored to anchorMin/anchorMax (no offset).
+        private Text MakeLabel(Transform parent, string goName,
+                               Vector2 anchorMin, Vector2 anchorMax,
+                               int fontSize, bool bold, TextAnchor align)
+        {
+            var go  = new GameObject(goName);
+            go.transform.SetParent(parent, false);
+            var rt  = go.AddComponent<RectTransform>();
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var txt       = go.AddComponent<Text>();
+            txt.font      = FontLibrary.Body;
+            txt.fontSize  = fontSize;
+            txt.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            txt.alignment = align;
+            txt.color     = Color.white;
+            return txt;
+        }
+
+        // Create a Button with a label, anchored to anchorMin/anchorMax.
+        private Button MakeButton(Transform parent, string goName,
+                                  Vector2 anchorMin, Vector2 anchorMax,
+                                  string label, Color bgColor)
+        {
+            var go  = new GameObject(goName);
+            go.transform.SetParent(parent, false);
+            var rt  = go.AddComponent<RectTransform>();
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var img   = go.AddComponent<Image>();
+            img.color = bgColor;
+            var btn   = go.AddComponent<Button>();
+
+            var lblGO = new GameObject("Label");
+            lblGO.transform.SetParent(go.transform, false);
+            var lblRT = lblGO.AddComponent<RectTransform>();
+            lblRT.anchorMin = Vector2.zero;
+            lblRT.anchorMax = Vector2.one;
+            lblRT.offsetMin = Vector2.zero;
+            lblRT.offsetMax = Vector2.zero;
+            var txt       = lblGO.AddComponent<Text>();
+            txt.font      = FontLibrary.Body;
+            txt.fontSize  = 26;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color     = Color.white;
+            txt.text      = label;
+
+            return btn;
+        }
+
+        // ------------------------------------------------------------------ //
+        // CanvasGroup helpers
+        // ------------------------------------------------------------------ //
+
+        private static void SetCanvasGroupState(CanvasGroup cg, float alpha)
+        {
+            cg.alpha          = alpha;
+            cg.interactable   = alpha > 0f;
+            cg.blocksRaycasts = alpha > 0f;
+        }
+
+        private IEnumerator FadeCanvasGroup(CanvasGroup cg, float target, float duration)
+        {
+            float startAlpha = cg.alpha;
+            float elapsed    = 0f;
+            while (elapsed < duration)
+            {
+                elapsed  += Time.deltaTime;
+                cg.alpha  = Mathf.Lerp(startAlpha, target,
+                                Mathf.Clamp01(elapsed / duration));
+                yield return null;
+            }
+            cg.alpha          = target;
+            cg.interactable   = target > 0f;
+            cg.blocksRaycasts = target > 0f;
+        }
+
+        // ------------------------------------------------------------------ //
+        // Sprite helpers
         // ------------------------------------------------------------------ //
 
         private GameObject CreateSpriteQuad(string name, Vector2 size)
