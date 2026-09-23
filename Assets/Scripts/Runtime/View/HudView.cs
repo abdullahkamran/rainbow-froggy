@@ -5,10 +5,11 @@ namespace RainbowFroggy.View
 {
     // Gameplay HUD: label regions visible only during active play.
     //
-    //   Top-left  — Golden Flies counter  ("Flies: N")
-    //   Top-right — High-score display    ("Best: N")
-    //   Centre    — Score + Fever label   ("142 ×3")
-    //   Top-centre — Prism countdown     ("PRISM 7.4s")  hidden when inactive
+    //   Top-left   — Golden Flies counter  ("Flies: N")
+    //   Top-right  — High-score display    ("Best: N")
+    //   Centre     — Score + Fever label   ("142 ×3")
+    //   Top-centre — Prism countdown       ("PRISM 7.4s")   hidden when inactive
+    //   Bottom     — Time Freeze countdown ("Freeze: 5.0s") hidden when inactive
     //
     // The parent CanvasGroup starts at alpha 0 in the idle state and fades in
     // when gameplay begins (GameBootstrap drives the fade).
@@ -18,18 +19,21 @@ namespace RainbowFroggy.View
         private Text _scoreLabel;
         private Text _highScoreLabel;
         private Text _prismLabel;
+        private Text _countdownLabel;
 
-        // Called by GameBootstrap after constructing the labels.
+        // Called by GameBootstrap after constructing all labels.
         public void Init(Text fliesLabel, Text scoreLabel, Text highScoreLabel,
-                         Text prismLabel)
+                         Text prismLabel, Text countdownLabel)
         {
             _fliesLabel     = fliesLabel;
             _scoreLabel     = scoreLabel;
             _highScoreLabel = highScoreLabel;
             _prismLabel     = prismLabel;
+            _countdownLabel = countdownLabel;
 
-            // Hidden by default; shown only while Prism Mode is active.
-            if (_prismLabel != null) _prismLabel.gameObject.SetActive(false);
+            // Hidden by default; shown only while the respective power-up is active.
+            if (_prismLabel     != null) _prismLabel.gameObject.SetActive(false);
+            if (_countdownLabel != null) _countdownLabel.gameObject.SetActive(false);
         }
 
         // Update every frame while in the Playing state.
@@ -41,13 +45,19 @@ namespace RainbowFroggy.View
         }
 
         // Show or hide the Prism Mode countdown banner.
-        // remaining is in seconds; the label formats it to one decimal place.
         public void SetPrism(bool active, float remaining)
         {
             if (_prismLabel == null) return;
             _prismLabel.gameObject.SetActive(active);
             if (active)
                 _prismLabel.text = "PRISM " + remaining.ToString("0.0") + "s";
+        }
+
+        // Update the Time Freeze countdown label (called each frame while active).
+        public void SetFreeze(float remaining)
+        {
+            if (_countdownLabel != null)
+                _countdownLabel.text = "Freeze: " + remaining.ToString("F1") + "s";
         }
     }
 }

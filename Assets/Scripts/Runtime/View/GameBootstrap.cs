@@ -28,11 +28,19 @@ namespace RainbowFroggy.View
         private readonly Dictionary<int, PadView> _padViews =
             new Dictionary<int, PadView>();
 
-        // pickupId → PickupView
-        private readonly Dictionary<int, PickupView> _pickupViews =
-            new Dictionary<int, PickupView>();
+        // pickupId → PowerUpView
+        private readonly Dictionary<int, PowerUpView> _pickupViews =
+            new Dictionary<int, PowerUpView>();
+
+        // Power-up UI: frost overlay and HUD countdown.
+        private GameObject _frostOverlayGO;
+        private GameObject _timeFreezeCountdownGO;
 
         private Material _spriteMat;
+
+        // Test seams: frost overlay and countdown GameObjects.
+        public GameObject FrostOverlay         => _frostOverlayGO;
+        public GameObject TimeFreezeCountdown  => _timeFreezeCountdownGO;
 
         private const float UiFadeDuration = 0.3f;
 
@@ -40,6 +48,16 @@ namespace RainbowFroggy.View
         public GameScreen  Screen         => _game != null ? _game.Screen : GameScreen.Playing;
         public int         Score          => _game != null ? _game.Score  : 0;
         public GameOverScreen GameOverScreen => _gameOverScreen;
+
+        // Test seam: directly invoke power-up collection (bypasses tap input).
+        // Immediately syncs the overlay GameObjects to reflect the new state.
+        public void ForceCollectPowerUp(RainbowFroggy.Core.PowerUpType type)
+        {
+            _game.CollectPowerUp(type);
+            bool frozen = _game.IsTimeFreezeActive;
+            if (_frostOverlayGO      != null) _frostOverlayGO.SetActive(frozen);
+            if (_timeFreezeCountdownGO != null) _timeFreezeCountdownGO.SetActive(frozen);
+        }
 
         // All root-level GameObjects created in Start(); tests use this for teardown.
         public IReadOnlyList<GameObject> CreatedRoots => _createdRoots;
@@ -62,6 +80,7 @@ namespace RainbowFroggy.View
             BuildBackground();
             BuildFrog();
             BuildHud();
+            BuildFrostOverlay();
             BuildMenuAndNav();
             BuildGameOverScreen();
             SyncAllPads();
@@ -90,10 +109,20 @@ namespace RainbowFroggy.View
             }
 
             SyncAllPads();
-            SyncAllPickups();
+            SyncPickups();
             _hud.SetData(_game.Score, _game.ComboMultiplier, _game.HighScore,
                          _game.FliesThisRun);
             _hud.SetPrism(_game.IsPrismActive, _game.PrismRemaining);
+
+            // Sync Time Freeze overlay and countdown.
+            bool frozen = _game.IsTimeFreezeActive;
+            if (_frostOverlayGO != null)
+                _frostOverlayGO.SetActive(frozen);
+            if (_timeFreezeCountdownGO != null)
+                _timeFreezeCountdownGO.SetActive(frozen);
+            if (frozen)
+                _hud.SetFreeze(_game.TimeFreezeRemaining);
+
             HandleInput();
         }
 
@@ -122,10 +151,14 @@ namespace RainbowFroggy.View
                 Destroy(kv.Value.gameObject);
             _padViews.Clear();
 
-            // Destroy pickup views; SyncAllPickups re-creates them as needed.
+            // Destroy all pickup views; SyncPickups re-creates them as needed.
             foreach (var kv in _pickupViews)
                 Destroy(kv.Value.gameObject);
             _pickupViews.Clear();
+
+            // Hide power-up overlays.
+            if (_frostOverlayGO        != null) _frostOverlayGO.SetActive(false);
+            if (_timeFreezeCountdownGO != null) _timeFreezeCountdownGO.SetActive(false);
 
             // Reset model state (returns to Idle, re-seeds pads).
             _game.ResetRun();
@@ -181,11 +214,17 @@ namespace RainbowFroggy.View
             var hit      = Physics2D.OverlapPoint(worldPos);
             if (hit == null) return;
 
-            // Check for a pickup first; pickups float on top of pads.
-            var pickupView = hit.GetComponent<PickupView>();
+            // Power-up pickup: collect it and remove its view.
+            var pickupView = hit.GetComponent<PowerUpView>();
             if (pickupView != null)
             {
-                _game.CollectPickup(pickupView.PickupId);
+                _game.CollectPowerUp(pickupView.PickupType);
+                _game.PowerUpField.RemovePickup(pickupView.PickupId);
+                if (_pickupViews.TryGetValue(pickupView.PickupId, out var pv))
+                {
+                    Destroy(pv.gameObject);
+                    _pickupViews.Remove(pickupView.PickupId);
+                }
                 return;
             }
 
@@ -245,11 +284,15 @@ namespace RainbowFroggy.View
                 }
                 else
                 {
-                    var go  = CreateSpriteQuad("Pad_" + pad.Id, new Vector2(1.5f, 0.4f));
+                    bool isLotus = pad.Type == RainbowFroggy.Core.PadType.Lotus;
+                    Vector2 size = isLotus ? new Vector2(2.5f, 2.5f) : new Vector2(1.5f, 0.4f);
+                    var go  = CreateSpriteQuad((isLotus ? "LotusPad_" : "Pad_") + pad.Id, size);
                     view    = go.AddComponent<PadView>();
                     var col = go.AddComponent<BoxCollider2D>();
-                    col.size = new Vector2(1.5f, 0.4f);
+                    col.size = size;
                     view.Bind(pad);
+                    if (isLotus)
+                        go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.5f, 0.8f);
                     _padViews[pad.Id] = view;
                 }
             }
@@ -266,12 +309,11 @@ namespace RainbowFroggy.View
             }
         }
 
-        // Sync pickup views with the model's current pickup list.
-        private void SyncAllPickups()
+        private void SyncPickups()
         {
             var activeIds = new HashSet<int>();
-            foreach (var p in _game.PowerUps.Pickups)
-                activeIds.Add(p.Id);
+            foreach (var pu in _game.PowerUpField.Pickups)
+                activeIds.Add(pu.Id);
 
             var toRemove = new List<int>();
             foreach (var kv in _pickupViews)
@@ -284,20 +326,20 @@ namespace RainbowFroggy.View
                 _pickupViews.Remove(id);
             }
 
-            foreach (var pickup in _game.PowerUps.Pickups)
+            foreach (var pu in _game.PowerUpField.Pickups)
             {
-                if (_pickupViews.TryGetValue(pickup.Id, out var view))
+                if (_pickupViews.TryGetValue(pu.Id, out var view))
                 {
-                    view.SyncPosition(pickup);
+                    view.SyncPosition(pu);
                 }
                 else
                 {
-                    var go  = CreateSpriteQuad("Pickup_" + pickup.Id, new Vector2(0.7f, 0.7f));
-                    view    = go.AddComponent<PickupView>();
+                    var go  = CreateSpriteQuad("PowerUp_" + pu.Id, new Vector2(0.8f, 0.8f));
+                    view    = go.AddComponent<PowerUpView>();
                     var col = go.AddComponent<BoxCollider2D>();
-                    col.size = new Vector2(0.7f, 0.7f);
-                    view.Bind(pickup);
-                    _pickupViews[pickup.Id] = view;
+                    col.size = new Vector2(0.8f, 0.8f);
+                    view.Bind(pu);
+                    _pickupViews[pu.Id] = view;
                 }
             }
         }
@@ -423,7 +465,54 @@ namespace RainbowFroggy.View
             prismText.alignment    = TextAnchor.UpperCenter;
             prismText.text         = "PRISM 8.0s";
 
-            _hud.Init(fliesText, scoreText, bestText, prismText);
+            // Bottom-centre: Time Freeze countdown — hidden until active.
+            var countdownGO            = new GameObject("TimeFreezeCountdown");
+            countdownGO.transform.SetParent(hudGO.transform, false);
+            var countdownRT            = countdownGO.AddComponent<RectTransform>();
+            countdownRT.anchorMin      = new Vector2(0.5f, 0f);
+            countdownRT.anchorMax      = new Vector2(0.5f, 0f);
+            countdownRT.pivot          = new Vector2(0.5f, 0f);
+            countdownRT.anchoredPosition = new Vector2(0f, 30f);
+            countdownRT.sizeDelta      = new Vector2(240f, 50f);
+            var countdownText          = countdownGO.AddComponent<Text>();
+            countdownText.font         = FontLibrary.Body;
+            countdownText.fontSize     = 30;
+            countdownText.fontStyle    = FontStyle.Bold;
+            countdownText.alignment    = TextAnchor.MiddleCenter;
+            countdownText.color        = new Color(0.6f, 0.9f, 1.0f); // icy blue
+            countdownText.text         = "Freeze: 5.0s";
+            _timeFreezeCountdownGO     = countdownGO;
+
+            _hud.Init(fliesText, scoreText, bestText, prismText, countdownText);
+        }
+
+        // ------------------------------------------------------------------
+        // Frost overlay — full-screen tint visible during Time Freeze
+        // ------------------------------------------------------------------
+
+        private void BuildFrostOverlay()
+        {
+            // A dedicated canvas so it renders above the river but below the HUD.
+            var canvas     = new GameObject("FrostOverlayCanvas");
+            var c          = canvas.AddComponent<Canvas>();
+            c.renderMode   = RenderMode.ScreenSpaceOverlay;
+            c.sortingOrder = 3;
+            canvas.AddComponent<CanvasScaler>();
+            _createdRoots.Add(canvas);
+
+            var overlayGO  = new GameObject("FrostOverlay");
+            overlayGO.transform.SetParent(canvas.transform, false);
+            var rt         = overlayGO.AddComponent<RectTransform>();
+            rt.anchorMin   = Vector2.zero;
+            rt.anchorMax   = Vector2.one;
+            rt.offsetMin   = Vector2.zero;
+            rt.offsetMax   = Vector2.zero;
+            var img        = overlayGO.AddComponent<Image>();
+            img.color      = new Color(0.65f, 0.90f, 1.00f, 0.28f); // semi-transparent icy blue
+            overlayGO.AddComponent<FrostOverlay>();
+
+            _frostOverlayGO = overlayGO;
+            overlayGO.SetActive(false);
         }
 
         // ------------------------------------------------------------------

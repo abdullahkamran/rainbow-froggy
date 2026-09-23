@@ -2,89 +2,96 @@ using System.Collections.Generic;
 
 namespace RainbowFroggy.Core
 {
-    public enum PickupType { Prism = 0 }
-
-    // Data record for a floating power-up pickup on the river.
-    public sealed class PickupData
-    {
-        public readonly int        Id;
-        public readonly PickupType Type;
-        public float X;
-        public float Y;
-
-        public PickupData(int id, PickupType type, float x, float y)
-        {
-            Id   = id;
-            Type = type;
-            X    = x;
-            Y    = y;
-        }
-    }
-
-    // Manages floating power-up pickups that scroll down the river layer
-    // at the same speed as lily pads.  A Prism pickup is spawned every
-    // PrismSpawnInterval seconds in the centre lane — no RNG used so the
-    // main game's seeded random stream is not disturbed.
+    // Manages floating power-up pickups that scroll down the river alongside
+    // the lily-pad field.  Pickups are spawned on a timer using weighted-random
+    // selection.
     public sealed class PowerUpField
     {
-        public const float PrismSpawnInterval = 15f;
+        // Seconds between scheduled pickup spawns.
+        public const float SpawnInterval = 6.0f;
 
-        private readonly List<PickupData> _pickups = new List<PickupData>();
+        private readonly List<PowerUpData> _pickups = new List<PowerUpData>();
+        private readonly IRng              _rng;
         private int   _nextId;
         private float _spawnTimer;
 
-        public IReadOnlyList<PickupData> Pickups => _pickups;
+        public IReadOnlyList<PowerUpData> Pickups => _pickups;
 
-        public PowerUpField()
+        public PowerUpField(IRng rng)
         {
-            _spawnTimer = PrismSpawnInterval;
+            _rng        = rng;
+            _spawnTimer = SpawnInterval;
         }
 
-        // Reset to initial state; call before each new run.
+        // Reset all state so the field can be reused across restarts.
         public void Reset()
         {
             _pickups.Clear();
             _nextId     = 0;
-            _spawnTimer = PrismSpawnInterval;
+            _spawnTimer = SpawnInterval;
         }
 
-        // Advance pickups by dt seconds.  fieldScrollSpeed should match
-        // PadField.ScrollSpeed so pickups move at the same rate as pads.
-        public void Tick(float dt, float fieldScrollSpeed)
+        // Advance the field by dt seconds at the given scroll speed.
+        // Pickups that scroll past the bottom (Y >= 1) are removed automatically.
+        // A dt of 0 is a no-op (used by the cross-tap invariant hack in RainbowFroggyGame).
+        public void Tick(float dt, float scrollSpeed)
         {
-            // Scroll all pickups toward the bottom of the play area.
-            foreach (var p in _pickups)
-                p.Y += fieldScrollSpeed * dt;
+            if (dt == 0f) return;
 
-            // Remove off-screen pickups.
             for (int i = _pickups.Count - 1; i >= 0; i--)
+            {
+                _pickups[i].Y += scrollSpeed * dt;
                 if (_pickups[i].Y >= 1.0f)
                     _pickups.RemoveAt(i);
+            }
 
-            // Spawn a Prism pickup in the centre lane once the timer expires.
             _spawnTimer -= dt;
             if (_spawnTimer <= 0f)
             {
-                _spawnTimer = PrismSpawnInterval;
-                _pickups.Add(new PickupData(_nextId++, PickupType.Prism, 0.5f, 0f));
+                _spawnTimer = SpawnInterval;
+                SpawnPickup();
             }
         }
 
         // Remove a pickup by id (called when the player collects it).
-        public void Remove(int id)
+        public void RemovePickup(int id)
         {
-            for (int i = _pickups.Count - 1; i >= 0; i--)
+            for (int i = 0; i < _pickups.Count; i++)
+            {
                 if (_pickups[i].Id == id)
-                { _pickups.RemoveAt(i); break; }
+                {
+                    _pickups.RemoveAt(i);
+                    return;
+                }
+            }
         }
 
-        // Test seam: inject a pickup directly without waiting for the timer.
-        // Returns the assigned id so the caller can pass it to CollectPickup.
-        public int AddPickup(PickupType type, float x = 0.5f, float y = 0.5f)
+        // Spawn one pickup using weighted-random type selection, add it to the
+        // list, and return it.  Public so tests can force a spawn deterministically.
+        public PowerUpData SpawnPickup()
         {
-            int id = _nextId++;
-            _pickups.Add(new PickupData(id, type, x, y));
-            return id;
+            PowerUpType type    = PickType();
+            float       x       = 0.2f + _rng.Next(0, 3) * 0.3f; // lanes: 0.2, 0.5, 0.8
+            var         pickup  = new PowerUpData(_nextId++, type, x, 0.05f);
+            _pickups.Add(pickup);
+            return pickup;
+        }
+
+        // ------------------------------------------------------------------ //
+
+        // Weighted-random type selection across all three power-up types.
+        private PowerUpType PickType()
+        {
+            int total = PowerUpWeights.TimeFreezeWeight
+                      + PowerUpWeights.LotusBloomWeight
+                      + PowerUpWeights.PrismWeight;
+            int roll = _rng.Next(0, total);
+            if (roll < PowerUpWeights.TimeFreezeWeight)
+                return PowerUpType.TimeFreeze;
+            roll -= PowerUpWeights.TimeFreezeWeight;
+            if (roll < PowerUpWeights.PrismWeight)
+                return PowerUpType.Prism;
+            return PowerUpType.LotusBloom;
         }
     }
 }
