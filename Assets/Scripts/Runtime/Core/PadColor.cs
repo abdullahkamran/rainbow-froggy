@@ -4,17 +4,19 @@ namespace RainbowFroggy.Core
 {
     public enum PadColor
     {
-        Ruby   = 0,
-        Cyan   = 1,
-        Mango  = 2,
-        Purple = 3,
-        Pink   = 4,
+        Ruby    = 0,
+        Cyan    = 1,
+        Mango   = 2,
+        Purple  = 3,
+        Pink    = 4,
+        Rainbow = 5,   // sentinel for the white/shimmer pad; never in PhaseColors arrays
     }
 
     public enum PadType
     {
-        Normal = 0,
-        Rotten = 1,
+        Normal  = 0,
+        Rotten  = 1,
+        Rainbow = 2,   // white/shimmer pad; any frog colour can land on it
     }
 
     public static class PhaseColors

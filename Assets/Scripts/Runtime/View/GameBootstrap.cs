@@ -28,6 +28,10 @@ namespace RainbowFroggy.View
         private readonly Dictionary<int, PadView> _padViews =
             new Dictionary<int, PadView>();
 
+        // pickupId → PickupView
+        private readonly Dictionary<int, PickupView> _pickupViews =
+            new Dictionary<int, PickupView>();
+
         private Material _spriteMat;
 
         private const float UiFadeDuration = 0.3f;
@@ -86,8 +90,10 @@ namespace RainbowFroggy.View
             }
 
             SyncAllPads();
+            SyncAllPickups();
             _hud.SetData(_game.Score, _game.ComboMultiplier, _game.HighScore,
                          _game.FliesThisRun);
+            _hud.SetPrism(_game.IsPrismActive, _game.PrismRemaining);
             HandleInput();
         }
 
@@ -115,6 +121,11 @@ namespace RainbowFroggy.View
             foreach (var kv in _padViews)
                 Destroy(kv.Value.gameObject);
             _padViews.Clear();
+
+            // Destroy pickup views; SyncAllPickups re-creates them as needed.
+            foreach (var kv in _pickupViews)
+                Destroy(kv.Value.gameObject);
+            _pickupViews.Clear();
 
             // Reset model state (returns to Idle, re-seeds pads).
             _game.ResetRun();
@@ -169,6 +180,14 @@ namespace RainbowFroggy.View
             var worldPos = Camera.main.ScreenToWorldPoint(screenPos);
             var hit      = Physics2D.OverlapPoint(worldPos);
             if (hit == null) return;
+
+            // Check for a pickup first; pickups float on top of pads.
+            var pickupView = hit.GetComponent<PickupView>();
+            if (pickupView != null)
+            {
+                _game.CollectPickup(pickupView.PickupId);
+                return;
+            }
 
             var padView = hit.GetComponent<PadView>();
             if (padView == null) return;
@@ -244,6 +263,42 @@ namespace RainbowFroggy.View
             {
                 _frogView.SetAnchor(frogPad.transform.position +
                                     new Vector3(0f, 0.3f, 0f));
+            }
+        }
+
+        // Sync pickup views with the model's current pickup list.
+        private void SyncAllPickups()
+        {
+            var activeIds = new HashSet<int>();
+            foreach (var p in _game.PowerUps.Pickups)
+                activeIds.Add(p.Id);
+
+            var toRemove = new List<int>();
+            foreach (var kv in _pickupViews)
+                if (!activeIds.Contains(kv.Key))
+                    toRemove.Add(kv.Key);
+
+            foreach (var id in toRemove)
+            {
+                Destroy(_pickupViews[id].gameObject);
+                _pickupViews.Remove(id);
+            }
+
+            foreach (var pickup in _game.PowerUps.Pickups)
+            {
+                if (_pickupViews.TryGetValue(pickup.Id, out var view))
+                {
+                    view.SyncPosition(pickup);
+                }
+                else
+                {
+                    var go  = CreateSpriteQuad("Pickup_" + pickup.Id, new Vector2(0.7f, 0.7f));
+                    view    = go.AddComponent<PickupView>();
+                    var col = go.AddComponent<BoxCollider2D>();
+                    col.size = new Vector2(0.7f, 0.7f);
+                    view.Bind(pickup);
+                    _pickupViews[pickup.Id] = view;
+                }
             }
         }
 
@@ -351,7 +406,24 @@ namespace RainbowFroggy.View
             scoreText.alignment    = TextAnchor.UpperCenter;
             scoreText.text         = "0 \xd71";
 
-            _hud.Init(fliesText, scoreText, bestText);
+            // Top-centre: Prism Mode countdown ("PRISM 7.4s") — hidden until active.
+            var prismGO            = new GameObject("PrismLabel");
+            prismGO.transform.SetParent(hudGO.transform, false);
+            var prismRT            = prismGO.AddComponent<RectTransform>();
+            prismRT.anchorMin      = new Vector2(0.5f, 1f);
+            prismRT.anchorMax      = new Vector2(0.5f, 1f);
+            prismRT.pivot          = new Vector2(0.5f, 1f);
+            prismRT.anchoredPosition = new Vector2(0f, -76f); // below score label
+            prismRT.sizeDelta      = new Vector2(280f, 44f);
+            var prismText          = prismGO.AddComponent<Text>();
+            prismText.font         = FontLibrary.Body;
+            prismText.fontSize     = 26;
+            prismText.fontStyle    = FontStyle.Bold;
+            prismText.color        = new Color(1f, 0.878f, 0.2f); // gold, matches pickup
+            prismText.alignment    = TextAnchor.UpperCenter;
+            prismText.text         = "PRISM 8.0s";
+
+            _hud.Init(fliesText, scoreText, bestText, prismText);
         }
 
         // ------------------------------------------------------------------
