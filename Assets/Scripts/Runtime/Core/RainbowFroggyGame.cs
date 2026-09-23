@@ -32,10 +32,12 @@ namespace RainbowFroggy.Core
     //   Phase 4: 300+     ×4.0 speed, +Pink, drifting pads
     //
     // Power-ups:
-    //   Rainbow Pad — white/shimmer pad; any frog colour can land on it;
-    //                 landing assigns a new random colour to the frog.
-    //   Prism Mode  — 8 s duration; any-colour jumps, combo advances 2 rungs
-    //                 per jump instead of 1; countdown shown in HUD.
+    //   Rainbow Pad  — white/shimmer pad; any frog colour can land on it;
+    //                  landing assigns a new random colour to the frog.
+    //   Prism Mode   — 8 s duration; any-colour jumps, combo advances 2 rungs
+    //                  per jump instead of 1; countdown shown in HUD.
+    //   Time Freeze  — 5 s duration; slows scroll speed to ×0.2.
+    //   Lotus Bloom  — spawns a wildcard Lotus pad; one landing removes it.
     public sealed class RainbowFroggyGame
     {
         public GameScreen Screen          { get; private set; } = GameScreen.Playing;
@@ -66,24 +68,34 @@ namespace RainbowFroggy.Core
         // Seconds remaining until Prism Mode expires (0 when inactive).
         public float PrismRemaining { get; private set; }
 
-        // Floating pickups managed by the power-up field.
-        public PowerUpField PowerUps => _powerUps;
+        // Time Freeze power-up state.
+        public bool  IsTimeFreezeActive  => _isTimeFreezeActive;
+        public float TimeFreezeRemaining => _timeFreezeRemaining;
 
-        // Exposed so tests can query pad state directly.
-        public PadField Field => _field;
+        // Exposed so tests can query pad and power-up state directly.
+        public PadField     Field        => _field;
+        public PowerUpField PowerUpField => _powerUpField;
 
-        private readonly PadField    _field;
-        private readonly PowerUpField _powerUps;
-        private readonly IRng        _rng;
+        private readonly PadField     _field;
+        private readonly PowerUpField _powerUpField;
+        private readonly IRng         _rng;
         private float _gameTime;
         private float _lastJumpTime = float.NegativeInfinity;
 
+        // Time Freeze internal state.
+        private bool  _isTimeFreezeActive;
+        private float _timeFreezeRemaining;
+        private float _preFreezeMult = 1.0f;   // multiplier before freeze was applied
+
+        // Id of the active Lotus pad in the field, or -1 if none.
+        private int _lotusPadId = -1;
+
         public RainbowFroggyGame(IRng rng)
         {
-            _rng      = rng;
-            _powerUps = new PowerUpField();
-            FrogColor = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
-            _field    = new PadField(rng);
+            _rng          = rng;
+            FrogColor     = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
+            _field        = new PadField(rng);
+            _powerUpField = new PowerUpField(rng);
             _field.Initialize(FrogColor);
 
             // Frog starts on the first matching pad.
@@ -118,6 +130,18 @@ namespace RainbowFroggy.Core
             if (_gameTime - _lastJumpTime > 1.5f)
                 ComboMultiplier = 1;
 
+            // Time Freeze countdown — skip when dt == 0 (cross-tap invariant hack).
+            if (_isTimeFreezeActive && dt > 0f)
+            {
+                _timeFreezeRemaining -= dt;
+                if (_timeFreezeRemaining <= 0f)
+                {
+                    _timeFreezeRemaining            = 0f;
+                    _isTimeFreezeActive             = false;
+                    _field.ScrollSpeedMultiplier    = _preFreezeMult;
+                }
+            }
+
             // Phase transition check — runs before field tick so that the
             // new scroll speed takes effect within this same frame.
             int newPhase = PhaseForJumpCount(JumpCount);
@@ -128,7 +152,10 @@ namespace RainbowFroggy.Core
             }
 
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
-            _powerUps.Tick(dt, _field.ScrollSpeed);
+
+            // Scroll power-up pickups at the same effective speed as pads.
+            float effectiveSpeed = _field.ScrollSpeed * _field.ScrollSpeedMultiplier;
+            _powerUpField.Tick(dt, effectiveSpeed);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
             foreach (var gone in offScreen)
@@ -142,24 +169,39 @@ namespace RainbowFroggy.Core
             }
         }
 
-        // The player collected a power-up pickup.
-        public void CollectPickup(int id)
+        // Collect a power-up pickup.  Called by the view layer when the player
+        // taps a floating power-up object.
+        public void CollectPowerUp(PowerUpType type)
         {
             if (Screen != GameScreen.Playing) return;
 
-            PickupData target = null;
-            foreach (var p in _powerUps.Pickups)
-                if (p.Id == id) { target = p; break; }
-
-            if (target == null) return;
-
-            if (target.Type == PickupType.Prism)
+            switch (type)
             {
-                IsPrismActive  = true;
-                PrismRemaining = PrismDuration;
-            }
+                case PowerUpType.Prism:
+                    IsPrismActive  = true;
+                    PrismRemaining = PrismDuration;
+                    break;
 
-            _powerUps.Remove(id);
+                case PowerUpType.TimeFreeze:
+                    // Store the current multiplier before applying the freeze so it
+                    // can be exactly restored on expiry.
+                    if (!_isTimeFreezeActive)
+                        _preFreezeMult = _field.ScrollSpeedMultiplier;
+                    _isTimeFreezeActive          = true;
+                    _timeFreezeRemaining         = 5.0f;
+                    _field.ScrollSpeedMultiplier = 0.20f;
+                    break;
+
+                case PowerUpType.LotusBloom:
+                    // Remove any existing lotus pad before spawning a fresh one.
+                    if (_lotusPadId != -1)
+                    {
+                        _field.RemovePad(_lotusPadId, FrogColor);
+                        _lotusPadId = -1;
+                    }
+                    _lotusPadId = _field.SpawnLotusPad();
+                    break;
+            }
         }
 
         // The player tapped a pad.
@@ -175,11 +217,12 @@ namespace RainbowFroggy.Core
 
             // Landing eligibility:
             //   Rainbow Pad — always land-able (any frog colour).
-            //   Prism Mode  — any-colour Normal pads are land-able.
+            //   Prism Mode  — any-colour pads are land-able.
+            //   Lotus Pad   — wildcard; CanLand returns true for any frog colour.
             //   Otherwise   — colour must match.
             bool canLand = target.Type == PadType.Rainbow
                         || IsPrismActive
-                        || target.Color == FrogColor;
+                        || target.CanLand(FrogColor);
 
             if (!canLand)
             {
@@ -238,8 +281,8 @@ namespace RainbowFroggy.Core
             }
             else if (!selfTap)
             {
-                // Cross-tap on a Normal pad: shift to a new random colour and
-                // enforce the invariant so the player always has a valid target.
+                // Cross-tap on a Normal or Lotus pad: shift to a new random colour
+                // and enforce the invariant so the player always has a valid target.
                 PadColor[] palette = PhaseColors.ForPhase(Phase);
                 PadColor newColor;
                 do { newColor = palette[_rng.Next(0, palette.Length)]; }
@@ -250,6 +293,16 @@ namespace RainbowFroggy.Core
             }
             // Self-tap on a Normal pad: FrogColor stays equal to the landed
             // pad's colour — required by PlayMode AC5.
+
+            // Lotus one-shot: remove the pad immediately after landing so it
+            // cannot be tapped again.  FrogPadId is reset to -1 since the pad
+            // is gone; the frog floats at the Lotus position until the next jump.
+            if (target.Type == PadType.Lotus)
+            {
+                _field.RemovePad(target.Id, FrogColor);
+                _lotusPadId = -1;
+                FrogPadId   = -1;
+            }
 
             FliesThisRun++;
             JumpCount++;
@@ -288,10 +341,16 @@ namespace RainbowFroggy.Core
             IsPrismActive   = false;
             PrismRemaining  = 0f;
 
+            // Reset power-up state.
+            _isTimeFreezeActive  = false;
+            _timeFreezeRemaining = 0f;
+            _preFreezeMult       = 1.0f;
+            _lotusPadId          = -1;
+            _powerUpField.Reset();
+
             FrogColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)];
             _field.Reset();
             _field.Initialize(FrogColor);
-            _powerUps.Reset();
 
             // Frog starts on the first matching pad.
             FrogPadId = -1;

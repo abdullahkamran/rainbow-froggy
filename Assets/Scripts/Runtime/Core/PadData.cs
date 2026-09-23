@@ -33,5 +33,10 @@ namespace RainbowFroggy.Core
             VelocityX      = velocityX;
             DriftAmplitude = driftAmplitude;
         }
+
+        // Returns true if a frog of the given colour may land on this pad.
+        // Lotus pads are wildcards and accept every frog colour.
+        public bool CanLand(PadColor frogColor) =>
+            Type == PadType.Lotus || Color == frogColor;
     }
 }

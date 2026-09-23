@@ -80,6 +80,43 @@ against the external document.  The five named Color constants in
 `ColorPalette.cs` use the hex values already present in the inline spec
 (`#FF4552`, `#FFD035`, `#00E5FF`, `#B429F9`, `#FF3399`).
 
+## Power-ups (issue #27)
+
+### Time Freeze
+
+| Property              | Value  |
+|-----------------------|--------|
+| Duration              | 5.0 s  |
+| Scroll-speed multiplier | 0.20 (80% reduction) |
+| Visual indicator      | Full-screen semi-transparent icy-blue overlay (`FrostOverlay`) |
+| HUD indicator         | `TimeFreezeCountdown` label (bottom-centre of HUD) |
+
+### Lotus Bloom
+
+| Property              | Value |
+|-----------------------|-------|
+| Spawn position        | Normalised (0.5, 0.5) — maps to world (0, 0) |
+| Landing rule          | Wildcard: any `PadColor` can land (`PadData.CanLand`) |
+| Removal               | One-shot: pad removed immediately on first landing |
+
+### Spawn weights
+
+| Power-up     | Weight | Notes |
+|--------------|--------|-------|
+| Time Freeze  | 10     | Same as standard pad weight |
+| Lotus Bloom  | 1      | **Rare** — strictly less than both Time Freeze and standard pad weights |
+| Standard pad | 10     | Reference value only; defined in `PowerUpWeights.StandardPadWeight` |
+
+Weighted selection probability per spawn cycle:
+- Time Freeze: 10/11 ≈ 90.9 %
+- Lotus Bloom: 1/11 ≈ 9.1 %
+
+**Assumption recorded here:** The issue specifies only that Lotus Bloom is "rare" with no numeric
+definition.  The 1-vs-10 ratio is an implementation choice.  AC4 requires only that
+`LotusBloomWeight < TimeFreezeWeight`, which is locally verifiable from the source constants.
+If a different ratio is required, update `PowerUpWeights.LotusBloomWeight` in
+`PowerUpType.cs` and re-run the tests.
+
 ## Phase 1 constants
 
 | Constant       | Value   |

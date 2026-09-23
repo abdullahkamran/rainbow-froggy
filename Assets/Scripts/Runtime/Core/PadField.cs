@@ -24,6 +24,18 @@ namespace RainbowFroggy.Core
         // Base scroll speed for Phase 1; scaled by SetPhase.
         private float _scrollSpeed = 0.12f;
 
+        // Multiplier applied on top of the base scroll speed (1.0 = normal).
+        // Power-ups write this to slow or speed the river without changing the
+        // phase base speed — kept separate so SetPhase and freeze compose cleanly.
+        private float _scrollSpeedMultiplier = 1.0f;
+
+        // Exposed for power-up state and tests; writable by RainbowFroggyGame.
+        public float ScrollSpeedMultiplier
+        {
+            get => _scrollSpeedMultiplier;
+            set => _scrollSpeedMultiplier = value;
+        }
+
         // Current active colour palette (grows with each phase).
         private PadColor[] _activePalette = PhaseColors.Phase1;
 
@@ -73,17 +85,18 @@ namespace RainbowFroggy.Core
         public void Reset()
         {
             _pads.Clear();
-            _nextId               = 0;
-            _spawnTimer           = SpawnInterval;
-            _lateArrivalPending   = false;
-            _lateArrivalTimer     = 0f;
-            _phase                = 0;
-            _scrollSpeed          = 0.12f;
-            _activePalette        = PhaseColors.Phase1;
-            _rottenEnabled        = false;
-            _driftEnabled         = false;
-            _rottenSpawnTimer     = 0f;
-            _spawnsSinceRainbow   = 0;
+            _nextId                = 0;
+            _spawnTimer            = SpawnInterval;
+            _lateArrivalPending    = false;
+            _lateArrivalTimer      = 0f;
+            _phase                 = 0;
+            _scrollSpeed           = 0.12f;
+            _scrollSpeedMultiplier = 1.0f;
+            _activePalette         = PhaseColors.Phase1;
+            _rottenEnabled         = false;
+            _driftEnabled          = false;
+            _rottenSpawnTimer      = 0f;
+            _spawnsSinceRainbow    = 0;
         }
 
         // Apply a phase transition: update scroll speed, active palette, and
@@ -144,7 +157,7 @@ namespace RainbowFroggy.Core
             // 1. Scroll all pads down; apply horizontal drift for Phase-4 pads.
             foreach (var pad in _pads)
             {
-                pad.Y += _scrollSpeed * dt;
+                pad.Y += _scrollSpeed * _scrollSpeedMultiplier * dt;
 
                 if (pad.VelocityX != 0f)
                 {
@@ -254,7 +267,7 @@ namespace RainbowFroggy.Core
         {
             int n = 0;
             foreach (var pad in _pads)
-                if (pad.Color == color) n++;
+                if (pad.Color == color && pad.Type != PadType.Lotus) n++;
             return n;
         }
 
@@ -265,13 +278,25 @@ namespace RainbowFroggy.Core
             _pads.Add(new PadData(_nextId++, PadColor.Rainbow, x, y, PadType.Rainbow));
         }
 
+        // Spawn a Lotus pad at the normalised centre of the play area (x=0.5, y=0.5).
+        // Lotus pads are wildcards: PadData.CanLand returns true for every PadColor.
+        // They are intentionally excluded from CountMatching so they do not satisfy
+        // the guaranteed-path invariant (a one-shot wild cannot be the sole safe target).
+        // Returns the new pad's id.
+        public int SpawnLotusPad()
+        {
+            var pad = new PadData(_nextId++, PadColor.Ruby, 0.5f, 0.5f, PadType.Lotus);
+            _pads.Add(pad);
+            return pad.Id;
+        }
+
         // ------------------------------------------------------------------ //
 
         private int CountMatching(PadColor color, PadData excluding)
         {
             int n = 0;
             foreach (var pad in _pads)
-                if (pad.Color == color && pad != excluding) n++;
+                if (pad.Color == color && pad.Type != PadType.Lotus && pad != excluding) n++;
             return n;
         }
 
@@ -279,7 +304,7 @@ namespace RainbowFroggy.Core
         {
             int n = 0;
             foreach (var pad in _pads)
-                if (pad.Color == color && !excluding.Contains(pad)) n++;
+                if (pad.Color == color && pad.Type != PadType.Lotus && !excluding.Contains(pad)) n++;
             return n;
         }
 

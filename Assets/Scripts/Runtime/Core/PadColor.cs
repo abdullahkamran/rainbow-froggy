@@ -17,6 +17,7 @@ namespace RainbowFroggy.Core
         Normal  = 0,
         Rotten  = 1,
         Rainbow = 2,   // white/shimmer pad; any frog colour can land on it
+        Lotus   = 3,   // wildcard pad that accepts every frog colour; removed after one landing
     }
 
     public static class PhaseColors
