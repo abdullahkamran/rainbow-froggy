@@ -4,6 +4,8 @@ using UnityEngine;
 // Invoked by: unity build --target WebGL --execute-method Build.PerformWebGLBuild
 public static class Build
 {
+    public static void BuildWebGL() => PerformWebGLBuild();
+
     public static void PerformWebGLBuild()
     {
         // Disable compression so the built files can be served without special
