@@ -95,6 +95,14 @@ namespace RainbowFroggy.View
 
         public void SetColor(PadColor c) => _sr.color = ColorPalette.For(c);
 
+        // Swap the body sprite to the equipped skin's sprite.
+        // Passing null is a no-op (keeps the procedural circle generated in Awake).
+        public void SetSkin(Sprite skin)
+        {
+            if (_sr != null && skin != null)
+                _sr.sprite = skin;
+        }
+
         // Flash body white → newColor; fires as a background coroutine after landing (AC2).
         public void FlashColor(PadColor newColor)
         {

@@ -18,6 +18,7 @@ namespace RainbowFroggy.View
         private GameOverScreen    _gameOverScreen;
         private MenuChrome        _menuChrome;
         private BottomNavBar      _bottomNavBar;
+        private SkinService       _skinService;
 
         // CanvasGroups driven by state transitions.
         private CanvasGroup _hudCG;
@@ -79,6 +80,8 @@ namespace RainbowFroggy.View
             ConfigureCamera();
             BuildBackground();
             BuildFrog();
+            _skinService = new SkinService();
+            _frogView.SetSkin(_skinService.EquippedSprite);
             BuildHud();
             BuildFrostOverlay();
             BuildMenuAndNav();
@@ -103,9 +106,15 @@ namespace RainbowFroggy.View
             if (_game.Screen == GameScreen.WaterfallGameOver)
             {
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
+                PlayerPrefs.Save();
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
+                bool  newHigh1   = _game.IsNewHighScore;
+                int   hi1        = _game.HighScore;
+                int   sc1        = _game.Score;
+                int   fl1        = _game.FliesThisRun;
+                GameScreen sr1   = _game.Screen;
                 _frogView.RideDown(worldSpeed, () =>
-                    _gameOverScreen.Show(_game.Screen, _game.Score, _game.FliesThisRun));
+                    _gameOverScreen.Show(sr1, sc1, fl1, hi1, newHigh1));
             }
 
             SyncAllPads();
@@ -248,10 +257,15 @@ namespace RainbowFroggy.View
             {
                 // Jump to the wrong pad, then sink, then show game-over.
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
+                PlayerPrefs.Save();
+                bool  newHigh2 = _game.IsNewHighScore;
+                int   hi2      = _game.HighScore;
+                int   sc2      = _game.Score;
+                int   fl2      = _game.FliesThisRun;
                 _frogView.JumpTo(padView.transform, () =>
                     _frogView.Sink(() =>
                         _gameOverScreen.Show(GameScreen.MisstepGameOver,
-                                             _game.Score, _game.FliesThisRun)));
+                                             sc2, fl2, hi2, newHigh2)));
             }
         }
 
@@ -629,6 +643,12 @@ namespace RainbowFroggy.View
             var leaderboardSheet = BuildBottomSheet(sheetCanvas.transform, "Leaderboard", "Leaderboard");
             var settingsSheet    = BuildBottomSheet(sheetCanvas.transform, "Settings",    "Settings");
 
+            // Populate the wardrobe sheet with the skin grid.
+            var wp = wardrobeSheet.gameObject.AddComponent<WardrobePanel>();
+            wp.Init(wardrobeSheet.transform, _skinService,
+                    () => _game.HighScore,
+                    skin => { if (_frogView != null) _frogView.SetSkin(skin?.sprite); });
+
             // ---- Nav buttons ----
             Button wardrobeBtn    = BuildNavButton(navGO.transform, "Wardrobe",    0);
             Button leaderboardBtn = BuildNavButton(navGO.transform, "Leaderboard", 1);
@@ -806,9 +826,33 @@ namespace RainbowFroggy.View
                 new Vector2(0.15f, 0.10f), new Vector2(0.85f, 0.21f),
                 "Restart", new Color(0.1f, 0.42f, 0.18f, 0.9f));
 
+            // All-time best score (always visible on the game-over panel).
+            var bestText = MakeLabel(panelGO.transform, "BestScoreLabel",
+                new Vector2(0.15f, 0.88f), new Vector2(0.85f, 0.97f),
+                fontSize: 26, bold: false, align: TextAnchor.MiddleCenter);
+            bestText.text = "Best: 0";
+
+            // "New High Score!" flash — starts inactive; shown only when score beats the record.
+            var newHighGO    = new GameObject("NewHighScoreLabel");
+            newHighGO.transform.SetParent(panelGO.transform, false);
+            var newHighRT    = newHighGO.AddComponent<RectTransform>();
+            newHighRT.anchorMin = new Vector2(0.05f, 0.79f);
+            newHighRT.anchorMax = new Vector2(0.95f, 0.87f);
+            newHighRT.offsetMin = Vector2.zero;
+            newHighRT.offsetMax = Vector2.zero;
+            var newHighTxt   = newHighGO.AddComponent<Text>();
+            newHighTxt.font      = FontLibrary.Body;
+            newHighTxt.fontSize  = 28;
+            newHighTxt.fontStyle = FontStyle.Bold;
+            newHighTxt.alignment = TextAnchor.MiddleCenter;
+            newHighTxt.color     = new Color(1f, 0.85f, 0.1f); // golden
+
+            newHighTxt.text = "New High Score!";
+
             _gameOverScreen.Init(headerText, scoreText, fliesText,
                                  secondChanceBtn, flyMultiplierBtn, restartBtn,
                                  OnRestart);
+            _gameOverScreen.InitHighScore(bestText, newHighGO);
         }
 
         // ------------------------------------------------------------------ //
