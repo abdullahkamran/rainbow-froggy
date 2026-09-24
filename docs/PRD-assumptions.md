@@ -126,6 +126,57 @@ If a different ratio is required, update `PowerUpWeights.LotusBloomWeight` in
 | InitialPadCount | 5      |
 | Active colours | 2 (Ruby, Cyan) |
 
+## Audio (issue #10)
+
+### BGM tempo table (AC2)
+
+| Phase | `AudioSource.pitch` |
+|-------|---------------------|
+| 1     | 1.00                |
+| 2     | 1.04                |
+| 3     | 1.08                |
+| 4     | 1.12                |
+
+Implemented in `AudioService.PitchForPhase(int phase)`.
+
+### Jump SFX pitch formula (AC3)
+
+`pitch = 1.0 + (multiplierTier − 1) × 0.15`
+
+Combo ladder tiers are 1, 2, 3, 5, giving pitches 1.00, 1.15, 1.30, 1.60.
+Implemented in `AudioService.PitchForTier(int tier)`.
+
+### Clip name list for asset replacement
+
+Drop a `.wav`/`.ogg` file at `Assets/Resources/Audio/<name>` to replace a
+placeholder.  `AudioLibrary.Load(name)` checks `Resources.Load<AudioClip>`
+first; the synthesized fallback is only used when no file exists.
+
+| Constant               | Path                             | Sound design description         |
+|------------------------|----------------------------------|----------------------------------|
+| `BgmClip = "bgm"`      | `Resources/Audio/bgm`            | Lo-fi tropical/marimba loop      |
+| `JumpClip = "jump"`    | `Resources/Audio/jump`           | Snappy bloop                     |
+| `LandingClip = "landing"` | `Resources/Audio/landing`     | Glassy "ting"                    |
+| `WaterfallClip = "waterfall"` | `Resources/Audio/waterfall` | Fading whoosh + distant splash |
+| `MisstepClip = "misstep"` | `Resources/Audio/misstep`     | Underwater gurgle + muted splat  |
+| `RainbowClip = "rainbow"` | `Resources/Audio/rainbow`     | Ethereal chimes                  |
+| `PrismClip = "prism"`  | `Resources/Audio/prism`          | Synthesized chords               |
+| `FreezeClip = "timefreeze"` | `Resources/Audio/timefreeze` | Bass drop + ticking clock        |
+
+### Unverifiable offline
+
+PRD §9's timbre, instrumentation, and mixing specifications are in an
+external Google Doc that is not committed to this repository.  The
+placeholder synthesis approximates each event; all asset slots are
+documented above for replacement when the PRD becomes accessible.
+
+### LotusBloom SFX
+
+PRD §9 does not list a dedicated SFX for Lotus Bloom in the power-up
+table quoted in the issue.  No clip is played on Lotus Bloom collection;
+add one to `AudioService.PlayPowerUp` and the table above if PRD §9
+specifies a sound.
+
 ## Animation constants (FrogView)
 
 These values are committed so that ACs 1, 3, 4, and 5 are checkable against

@@ -7,7 +7,8 @@ namespace RainbowFroggy.View
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class PadView : MonoBehaviour
     {
-        public int PadId { get; private set; }
+        public int     PadId   { get; private set; }
+        public PadType PadType { get; private set; }
 
         private SpriteRenderer _sr;
 
@@ -19,6 +20,7 @@ namespace RainbowFroggy.View
         public void Bind(PadData data)
         {
             PadId     = data.Id;
+            PadType   = data.Type;
             _sr.color = ColorPalette.For(data.Color);
             SyncPosition(data);
         }

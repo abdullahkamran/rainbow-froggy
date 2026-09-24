@@ -37,7 +37,9 @@ namespace RainbowFroggy.View
         private GameObject _frostOverlayGO;
         private GameObject _timeFreezeCountdownGO;
 
-        private Material _spriteMat;
+        private Material     _spriteMat;
+        private AudioService _audioService;
+        private int          _lastPhase = 1;
 
         // Test seams: frost overlay and countdown GameObjects.
         public GameObject FrostOverlay         => _frostOverlayGO;
@@ -55,6 +57,7 @@ namespace RainbowFroggy.View
         public void ForceCollectPowerUp(RainbowFroggy.Core.PowerUpType type)
         {
             _game.CollectPowerUp(type);
+            if (_audioService != null) _audioService.PlayPowerUp(type);
             bool frozen = _game.IsTimeFreezeActive;
             if (_frostOverlayGO      != null) _frostOverlayGO.SetActive(frozen);
             if (_timeFreezeCountdownGO != null) _timeFreezeCountdownGO.SetActive(frozen);
@@ -84,6 +87,7 @@ namespace RainbowFroggy.View
             _frogView.SetSkin(_skinService.EquippedSprite);
             BuildHud();
             BuildFrostOverlay();
+            BuildAudioRig();
             BuildMenuAndNav();
             BuildGameOverScreen();
             SyncAllPads();
@@ -101,10 +105,19 @@ namespace RainbowFroggy.View
 
             _game.Tick(Time.deltaTime);
 
+            // Sync BGM tempo on phase transition.
+            int currentPhase = _game.Phase;
+            if (currentPhase != _lastPhase)
+            {
+                _lastPhase = currentPhase;
+                _audioService.SetPhase(currentPhase);
+            }
+
             // Check for waterfall BEFORE SyncAllPads — the frog's pad view is still
             // alive this frame; SyncAllPads destroys it in the same pass.
             if (_game.Screen == GameScreen.WaterfallGameOver)
             {
+                _audioService.PlayWaterfall();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
@@ -228,6 +241,7 @@ namespace RainbowFroggy.View
             if (pickupView != null)
             {
                 _game.CollectPowerUp(pickupView.PickupType);
+                _audioService.PlayPowerUp(pickupView.PickupType);
                 _game.PowerUpField.RemovePickup(pickupView.PickupId);
                 if (_pickupViews.TryGetValue(pickupView.PickupId, out var pv))
                 {
@@ -244,18 +258,27 @@ namespace RainbowFroggy.View
 
             if (result == TapResult.Jump)
             {
-                // Dispatch the jump tween immediately.  Color and anchor are updated
-                // in the landing callback so they are invisible until the frog arrives.
+                // Play jump SFX immediately on input (AC3); pitch reflects current
+                // combo tier.  The double-fire guard in PlayJump handles rapid taps.
+                _audioService.PlayJump(_game.ComboMultiplier);
+
+                // Dispatch the jump tween immediately.  Color, anchor, and landing
+                // SFX are all applied inside the callback so they fire on arrival
+                // rather than at initiation (AC4).
                 _frogView.JumpTo(padView.transform, () =>
                 {
                     _frogView.SetAnchor(padView.transform.position +
                                         new Vector3(0f, 0.3f, 0f));
                     _frogView.FlashColor(_game.FrogColor);
+                    _audioService.PlayLanding();                   // AC4: on arrival
+                    if (padView.PadType == PadType.Rainbow)
+                        _audioService.PlayRainbowPad();            // AC7: rainbow pad
                 });
             }
             else if (result == TapResult.Misstep)
             {
                 // Jump to the wrong pad, then sink, then show game-over.
+                _audioService.PlayMisstep();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
                 bool  newHigh2 = _game.IsNewHighScore;
@@ -373,6 +396,15 @@ namespace RainbowFroggy.View
         // ------------------------------------------------------------------ //
         // Scene helpers
         // ------------------------------------------------------------------ //
+
+        // Create the AudioRig root and start BGM (AC1).
+        private void BuildAudioRig()
+        {
+            var go        = new GameObject("AudioRig");
+            _audioService = go.AddComponent<AudioService>();
+            _audioService.Init();
+            _createdRoots.Add(go);
+        }
 
         private void ConfigureCamera()
         {
@@ -642,6 +674,10 @@ namespace RainbowFroggy.View
             var wardrobeSheet    = BuildBottomSheet(sheetCanvas.transform, "Wardrobe",    "Wardrobe");
             var leaderboardSheet = BuildBottomSheet(sheetCanvas.transform, "Leaderboard", "Leaderboard");
             var settingsSheet    = BuildBottomSheet(sheetCanvas.transform, "Settings",    "Settings");
+
+            // Populate the settings sheet with the mute toggle (AC8).
+            var sp = settingsSheet.gameObject.AddComponent<SettingsPanel>();
+            sp.Init(settingsSheet.transform, _audioService);
 
             // Populate the wardrobe sheet with the skin grid.
             var wp = wardrobeSheet.gameObject.AddComponent<WardrobePanel>();
