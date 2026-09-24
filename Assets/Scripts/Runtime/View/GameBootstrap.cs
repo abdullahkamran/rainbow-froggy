@@ -411,10 +411,14 @@ namespace RainbowFroggy.View
                     GameObject go;
                     if (isLotus)
                     {
-                        go = CreateSpriteQuad("LotusPad_" + pad.Id, new Vector2(2.5f, 2.5f));
-                        var col = go.AddComponent<BoxCollider2D>();
-                        col.size = new Vector2(2.5f, 2.5f);
-                        go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.5f, 0.8f);
+                        go = new GameObject("LotusPad_" + pad.Id);
+                        var lsr     = go.AddComponent<SpriteRenderer>();
+                        lsr.sprite  = FrogView.MakeCircleSprite(32);
+                        lsr.material = _spriteMat;
+                        lsr.color   = new Color(1f, 0.5f, 0.8f);
+                        go.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+                        var col = go.AddComponent<CircleCollider2D>();
+                        col.radius = 0.5f;
                     }
                     else
                     {
@@ -469,11 +473,16 @@ namespace RainbowFroggy.View
                 }
                 else
                 {
-                    var go  = CreateSpriteQuad("PowerUp_" + pu.Id, new Vector2(0.8f, 0.8f));
+                    var go  = new GameObject("PowerUp_" + pu.Id);
+                    var psr = go.AddComponent<SpriteRenderer>();
+                    psr.sprite   = SpriteFactory.PowerUp(pu.Type);
+                    psr.material = _spriteMat;
+                    go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
                     view    = go.AddComponent<PowerUpView>();
-                    var col = go.AddComponent<BoxCollider2D>();
-                    col.size = new Vector2(0.8f, 0.8f);
+                    var col = go.AddComponent<CircleCollider2D>();
+                    col.radius = 0.5f;
                     view.Bind(pu);
+                    go.GetComponent<SpriteRenderer>().color = Color.white;
                     _pickupViews[pu.Id] = view;
                 }
             }
@@ -504,11 +513,14 @@ namespace RainbowFroggy.View
                 }
                 else
                 {
-                    var go  = CreateSpriteQuad("GoldenFly_" + fly.Id, new Vector2(0.6f, 0.6f));
-                    go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.85f, 0.2f); // golden
+                    var go  = new GameObject("GoldenFly_" + fly.Id);
+                    var fsr = go.AddComponent<SpriteRenderer>();
+                    fsr.sprite   = SpriteFactory.GoldenFly();
+                    fsr.material = _spriteMat;
+                    go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
                     view    = go.AddComponent<GoldenFlyView>();
-                    var col = go.AddComponent<BoxCollider2D>();
-                    col.size = new Vector2(0.6f, 0.6f);
+                    var col = go.AddComponent<CircleCollider2D>();
+                    col.radius = 0.5f;
                     view.Bind(fly);
                     _flyViews[fly.Id] = view;
                 }
