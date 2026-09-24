@@ -678,6 +678,11 @@ namespace RainbowFroggy.View
 
         private void BuildMenuAndNav()
         {
+            var evsGO = new GameObject("EventSystem");
+            evsGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            evsGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+            _createdRoots.Add(evsGO);
+
             var canvas = new GameObject("MenuCanvas");
             var c      = canvas.AddComponent<Canvas>();
             c.renderMode   = RenderMode.ScreenSpaceOverlay;
