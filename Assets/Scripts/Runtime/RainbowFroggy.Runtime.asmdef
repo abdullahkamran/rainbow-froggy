@@ -1,7 +1,9 @@
 {
     "name": "RainbowFroggy.Runtime",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GoogleMobileAds"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -9,6 +11,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.google.ads.mobile",
+            "expression": "",
+            "define": "GOOGLE_MOBILE_ADS"
+        }
+    ],
     "noEngineReferences": false
 }

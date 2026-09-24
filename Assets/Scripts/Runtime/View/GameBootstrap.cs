@@ -104,6 +104,13 @@ namespace RainbowFroggy.View
             BuildAudioRig();
             BuildMenuAndNav();
             BuildGameOverScreen();
+
+            // Create the ad service and wire it to the game-over screen.
+            var adServiceGO = new GameObject("AdService");
+            var adService   = adServiceGO.AddComponent<AdService>();
+            _createdRoots.Add(adServiceGO);
+            _gameOverScreen.InitAds(adService, OnRevive);
+
             SyncAllPads();
 
             // Start in idle: HUD hidden, chrome + nav visible.
@@ -135,7 +142,7 @@ namespace RainbowFroggy.View
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
                 int challengeBonus1 = _challengeService.TryGrantBonus();
-                FlyBank.Add(_game.FliesThisRun + challengeBonus1);
+                _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus1);
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
                 bool  newHigh1   = _game.IsNewHighScore;
                 int   hi1        = _game.HighScore;
@@ -233,6 +240,36 @@ namespace RainbowFroggy.View
             SetCanvasGroupState(_bottomNavCG,  alpha: 1f);
         }
 
+        // Called by GameOverScreen's Second Chance button after the rewarded ad completes.
+        // Hides the panel and returns the player to idle without wiping the current run
+        // (no ResetRun, no fly commit — flies remain pending for the next game-over).
+        private void OnRevive()
+        {
+            // Panel already hidden by the rewarded-ad callback in GameOverScreen.
+            _frogView.Reset();
+            _frogView.SetColor(_game.FrogColor);
+
+            // Re-seat the frog on its current pad if it still exists (misstep revive).
+            // After waterfall the pad has already scrolled off, so the frog floats at
+            // its reset position until the first tap after returning to idle.
+            if (_game.FrogPadId != -1 &&
+                _padViews.TryGetValue(_game.FrogPadId, out var rp))
+            {
+                _frogView.SetAnchor(rp.transform.position + new Vector3(0f, 0.3f, 0f));
+            }
+
+            _game.EnterIdle();
+
+            // Restore idle chrome (same layout as post-restart).
+            SetCanvasGroupState(_hudCG,        alpha: 0f);
+            SetCanvasGroupState(_menuChromeCG, alpha: 1f);
+            SetCanvasGroupState(_bottomNavCG,  alpha: 1f);
+
+            // Refresh lifetime balance label (flies not committed yet; re-reads the bank).
+            if (_lifetimeFliesText != null)
+                _lifetimeFliesText.text = "Flies: " + FlyBank.Get();
+        }
+
         // ------------------------------------------------------------------ //
         // Input
         // ------------------------------------------------------------------ //
@@ -327,7 +364,7 @@ namespace RainbowFroggy.View
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
                 int challengeBonus2 = _challengeService.TryGrantBonus();
-                FlyBank.Add(_game.FliesThisRun + challengeBonus2);
+                _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus2);
                 bool  newHigh2 = _game.IsNewHighScore;
                 int   hi2      = _game.HighScore;
                 int   sc2      = _game.Score;
