@@ -51,7 +51,8 @@ namespace RainbowFroggy.Core
         public PadColor   FrogColor       { get; private set; }
         public int        Phase           { get; private set; } = 1;
 
-        // Golden flies earned in the current run; incremented by 1 per successful jump.
+        // Golden Fly collectibles tapped during the current run.
+        // Incremented by CollectFly(), NOT by TapPad (AC2).
         public int        FliesThisRun    { get; private set; }
 
         // Total number of successful jumps made in this session.
@@ -75,13 +76,15 @@ namespace RainbowFroggy.Core
         public bool  IsTimeFreezeActive  => _isTimeFreezeActive;
         public float TimeFreezeRemaining => _timeFreezeRemaining;
 
-        // Exposed so tests can query pad and power-up state directly.
-        public PadField     Field        => _field;
-        public PowerUpField PowerUpField => _powerUpField;
+        // Exposed so tests and GameBootstrap can query field state directly.
+        public PadField       Field          => _field;
+        public PowerUpField   PowerUpField   => _powerUpField;
+        public GoldenFlyField GoldenFlyField => _goldenFlyField;
 
-        private readonly PadField     _field;
-        private readonly PowerUpField _powerUpField;
-        private readonly IRng         _rng;
+        private readonly PadField       _field;
+        private readonly PowerUpField   _powerUpField;
+        private readonly GoldenFlyField _goldenFlyField;
+        private readonly IRng           _rng;
         private float _gameTime;
         private float _lastJumpTime = float.NegativeInfinity;
 
@@ -95,10 +98,11 @@ namespace RainbowFroggy.Core
 
         public RainbowFroggyGame(IRng rng)
         {
-            _rng          = rng;
-            FrogColor     = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
-            _field        = new PadField(rng);
-            _powerUpField = new PowerUpField(rng);
+            _rng            = rng;
+            FrogColor       = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
+            _field          = new PadField(rng);
+            _powerUpField   = new PowerUpField(rng);
+            _goldenFlyField = new GoldenFlyField(rng);
             _field.Initialize(FrogColor);
 
             // Frog starts on the first matching pad.
@@ -156,9 +160,10 @@ namespace RainbowFroggy.Core
 
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
 
-            // Scroll power-up pickups at the same effective speed as pads.
+            // Scroll power-up pickups and Golden Flies at the same effective speed as pads.
             float effectiveSpeed = _field.ScrollSpeed * _field.ScrollSpeedMultiplier;
             _powerUpField.Tick(dt, effectiveSpeed);
+            _goldenFlyField.Tick(dt, effectiveSpeed);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
             foreach (var gone in offScreen)
@@ -205,6 +210,18 @@ namespace RainbowFroggy.Core
                     _lotusPadId = _field.SpawnLotusPad();
                     break;
             }
+        }
+
+        // The player tapped a Golden Fly collectible.
+        // +10 to the session score, +1 to the per-run Fly counter (AC2).
+        // Uses the same dispatch path as CollectPowerUp (Physics2D hit-test in
+        // GameBootstrap.HandleInput) so the two collection paths are structurally
+        // identical.
+        public void CollectFly()
+        {
+            if (Screen != GameScreen.Playing) return;
+            Score        += 10;
+            FliesThisRun += 1;
         }
 
         // The player tapped a pad.
@@ -307,7 +324,6 @@ namespace RainbowFroggy.Core
                 FrogPadId   = -1;
             }
 
-            FliesThisRun++;
             JumpCount++;
             return TapResult.Jump;
         }
@@ -345,12 +361,13 @@ namespace RainbowFroggy.Core
             IsPrismActive   = false;
             PrismRemaining  = 0f;
 
-            // Reset power-up state.
+            // Reset power-up and Golden Fly state.
             _isTimeFreezeActive  = false;
             _timeFreezeRemaining = 0f;
             _preFreezeMult       = 1.0f;
             _lotusPadId          = -1;
             _powerUpField.Reset();
+            _goldenFlyField.Reset();
 
             FrogColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)];
             _field.Reset();

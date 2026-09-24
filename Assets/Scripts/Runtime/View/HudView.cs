@@ -20,16 +20,18 @@ namespace RainbowFroggy.View
         private Text _highScoreLabel;
         private Text _prismLabel;
         private Text _countdownLabel;
+        private Text _challengeLabel;
 
         // Called by GameBootstrap after constructing all labels.
         public void Init(Text fliesLabel, Text scoreLabel, Text highScoreLabel,
-                         Text prismLabel, Text countdownLabel)
+                         Text prismLabel, Text countdownLabel, Text challengeLabel)
         {
             _fliesLabel     = fliesLabel;
             _scoreLabel     = scoreLabel;
             _highScoreLabel = highScoreLabel;
             _prismLabel     = prismLabel;
             _countdownLabel = countdownLabel;
+            _challengeLabel = challengeLabel;
 
             // Hidden by default; shown only while the respective power-up is active.
             if (_prismLabel     != null) _prismLabel.gameObject.SetActive(false);
@@ -58,6 +60,13 @@ namespace RainbowFroggy.View
         {
             if (_countdownLabel != null)
                 _countdownLabel.text = "Freeze: " + remaining.ToString("F1") + "s";
+        }
+
+        // Update the daily challenge progress label (AC9).
+        public void SetChallenge(int progress, int target)
+        {
+            if (_challengeLabel != null)
+                _challengeLabel.text = "Challenge: " + progress + " / " + target;
         }
     }
 }

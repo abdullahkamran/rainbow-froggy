@@ -51,9 +51,12 @@ different matching pad):
 constructor default stays `Playing` so existing tests are unaffected;
 `GameBootstrap` calls `EnterIdle()` after construction.
 
-**Flies currency** — `FliesThisRun` increments by 1 per successful
-cross-tap jump and resets to 0 on `ResetRun()`.  Shown in the gameplay HUD
-(top-left, golden colour) and on the game-over screen.
+**Flies currency** — `FliesThisRun` increments by 1 per *collected* Golden
+Fly (via `CollectFly()`, called from `HandleInput` on a `GoldenFlyView` tap)
+and resets to 0 on `ResetRun()`.  It is NOT incremented by `TapPad`; the
+per-jump increment that existed before issue #34 was removed to avoid
+double-counting.  Shown in the gameplay HUD (top-left, golden colour) and on
+the game-over screen.
 
 **Rotten pads (Phase 3+)** — A dedicated `_rottenSpawnTimer` (interval
 1.5 s) guarantees a rotten pad of the frog's current colour appears within
@@ -116,6 +119,46 @@ definition.  The 1-vs-10 ratio is an implementation choice.  AC4 requires only t
 `LotusBloomWeight < TimeFreezeWeight`, which is locally verifiable from the source constants.
 If a different ratio is required, update `PowerUpWeights.LotusBloomWeight` in
 `PowerUpType.cs` and re-run the tests.
+
+## Golden Flies collectibles & currency (issue #34)
+
+### FlyBank PlayerPrefs key
+
+| Key                        | Type | Notes |
+|----------------------------|------|-------|
+| `FlyBank.LifetimeKey = "LifetimeFlies"` | `int` | Cumulative lifetime total; written at every game-over via `FlyBank.Add()` |
+
+Wardrobe / shop systems that gate on the lifetime Fly balance must read from
+this key.  The key is defined as a `public const` in `FlyBank.cs`; searching
+the codebase for `FlyBank.LifetimeKey` yields all readers and writers.
+
+### Collectible mechanics
+
+| Property             | Value |
+|----------------------|-------|
+| Score bonus per fly  | +10 (via `CollectFly()` on the game model) |
+| Run counter per fly  | +1 (`FliesThisRun`) |
+| Default spawn rate   | 5.0 s (`GoldenFlySpawner._spawnIntervalSeconds`; tunable in Inspector) |
+| Spawn lanes          | 3 (normalised X = 0.2, 0.5, 0.8), Y = 0.05 at spawn |
+| Fly size (world)     | 0.6 × 0.6 units (golden quad + BoxCollider2D) |
+
+### Daily challenge (v1.0 hardcoded set)
+
+Active challenge selected by `DateTime.UtcNow.DayOfYear % 3`.
+
+| Name           | Target | Bonus flies |
+|----------------|--------|-------------|
+| Fly Catcher    | 5      | 10          |
+| Golden Streak  | 10     | 25          |
+| Fly Hoarder    | 20     | 50          |
+
+Completion flag: `PlayerPrefs key "ChallengeDoneDay"` stores `DayOfYear`;
+bonus is granted at most once per UTC calendar day.
+
+**Year-collision note (v1.0 accepted limitation):** a challenge completed on
+day N of year Y will remain flagged complete on day N of year Y+1.  Fix in a
+future issue by keying on `year * 1000 + DayOfYear` if annual precision is
+required.
 
 ## Phase 1 constants
 

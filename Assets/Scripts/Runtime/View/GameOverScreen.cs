@@ -46,6 +46,7 @@ namespace RainbowFroggy.View
             _onRestart           = onRestart;
 
             _restartButton.onClick.AddListener(OnRestartClicked);
+            _flyMultiplierButton.onClick.AddListener(OnFlyMultiplierClicked);
             gameObject.SetActive(false);
         }
 
@@ -99,5 +100,13 @@ namespace RainbowFroggy.View
         }
 
         private void OnRestartClicked() => _onRestart?.Invoke();
+
+        // Stub for the ad-rewarded Fly Multiplier feature (monetization issue #13).
+        // No ad-SDK calls or live ad logic belong here; wire those up in issue #13.
+        private void OnFlyMultiplierClicked()
+        {
+            // TODO(#13): show rewarded ad; on completion double FliesThisRun and
+            // re-commit to FlyBank.
+        }
     }
 }

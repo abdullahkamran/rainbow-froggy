@@ -33,13 +33,19 @@ namespace RainbowFroggy.View
         private readonly Dictionary<int, PowerUpView> _pickupViews =
             new Dictionary<int, PowerUpView>();
 
+        // flyId → GoldenFlyView
+        private readonly Dictionary<int, GoldenFlyView> _flyViews =
+            new Dictionary<int, GoldenFlyView>();
+
         // Power-up UI: frost overlay and HUD countdown.
         private GameObject _frostOverlayGO;
         private GameObject _timeFreezeCountdownGO;
 
-        private Material     _spriteMat;
-        private AudioService _audioService;
-        private int          _lastPhase = 1;
+        private Material         _spriteMat;
+        private AudioService     _audioService;
+        private int              _lastPhase = 1;
+        private ChallengeService _challengeService;
+        private Text             _lifetimeFliesText;  // main-menu lifetime balance display
 
         // Test seams: frost overlay and countdown GameObjects.
         public GameObject FrostOverlay         => _frostOverlayGO;
@@ -79,6 +85,14 @@ namespace RainbowFroggy.View
                 new SeededRng(UnityEngine.Random.Range(0, int.MaxValue)));
             _game.HighScore = PlayerPrefs.GetInt("HighScore", 0);
             _game.EnterIdle();
+
+            // Forward the serialized spawn rate to the GoldenFlyField so the
+            // Inspector value is respected at runtime (AC1).
+            var flySpawner = GetComponent<GoldenFlySpawner>();
+            if (flySpawner != null)
+                _game.GoldenFlyField.SpawnInterval = flySpawner.SpawnIntervalSeconds;
+
+            _challengeService = new ChallengeService();
 
             ConfigureCamera();
             BuildBackground();
@@ -120,6 +134,8 @@ namespace RainbowFroggy.View
                 _audioService.PlayWaterfall();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
+                int challengeBonus1 = _challengeService.TryGrantBonus();
+                FlyBank.Add(_game.FliesThisRun + challengeBonus1);
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
                 bool  newHigh1   = _game.IsNewHighScore;
                 int   hi1        = _game.HighScore;
@@ -132,9 +148,12 @@ namespace RainbowFroggy.View
 
             SyncAllPads();
             SyncPickups();
+            SyncFlies();
             _hud.SetData(_game.Score, _game.ComboMultiplier, _game.HighScore,
                          _game.FliesThisRun);
             _hud.SetPrism(_game.IsPrismActive, _game.PrismRemaining);
+            _hud.SetChallenge(_challengeService.Progress,
+                              _challengeService.Challenge.Target);
 
             // Sync Time Freeze overlay and countdown.
             bool frozen = _game.IsTimeFreezeActive;
@@ -178,12 +197,22 @@ namespace RainbowFroggy.View
                 Destroy(kv.Value.gameObject);
             _pickupViews.Clear();
 
+            // Destroy all fly views; SyncFlies re-creates them as needed.
+            foreach (var kv in _flyViews)
+                Destroy(kv.Value.gameObject);
+            _flyViews.Clear();
+
             // Hide power-up overlays.
             if (_frostOverlayGO        != null) _frostOverlayGO.SetActive(false);
             if (_timeFreezeCountdownGO != null) _timeFreezeCountdownGO.SetActive(false);
 
-            // Reset model state (returns to Idle, re-seeds pads).
+            // Reset model state (returns to Idle, re-seeds pads and Golden Fly field).
             _game.ResetRun();
+            _challengeService.Reset();
+
+            // Refresh the lifetime balance label now that the previous run is committed.
+            if (_lifetimeFliesText != null)
+                _lifetimeFliesText.text = "Flies: " + FlyBank.Get();
 
             // Reset frog visual state (stop any lingering death animation).
             _frogView.Reset();
@@ -251,6 +280,22 @@ namespace RainbowFroggy.View
                 return;
             }
 
+            // Golden Fly collectible: same hit-test path as power-ups and pads (AC2).
+            // Guard on _flyViews first: Unity's Destroy() is deferred to end-of-frame, so a fly
+            // that was already removed from _flyViews by SyncFlies() (e.g. it scrolled off-screen
+            // this Tick) still has a live collider.  Only grant score when the fly is still in our
+            // view dictionary, which is the authoritative "still collectible" gate.
+            var flyView = hit.GetComponent<GoldenFlyView>();
+            if (flyView != null && _flyViews.TryGetValue(flyView.FlyId, out var fv))
+            {
+                _game.CollectFly();
+                _game.GoldenFlyField.RemoveFly(flyView.FlyId);
+                Destroy(fv.gameObject);
+                _flyViews.Remove(flyView.FlyId);
+                _challengeService.RecordFlyCollected();
+                return;
+            }
+
             var padView = hit.GetComponent<PadView>();
             if (padView == null) return;
 
@@ -281,6 +326,8 @@ namespace RainbowFroggy.View
                 _audioService.PlayMisstep();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
+                int challengeBonus2 = _challengeService.TryGrantBonus();
+                FlyBank.Add(_game.FliesThisRun + challengeBonus2);
                 bool  newHigh2 = _game.IsNewHighScore;
                 int   hi2      = _game.HighScore;
                 int   sc2      = _game.Score;
@@ -389,6 +436,42 @@ namespace RainbowFroggy.View
                     col.size = new Vector2(0.8f, 0.8f);
                     view.Bind(pu);
                     _pickupViews[pu.Id] = view;
+                }
+            }
+        }
+
+        private void SyncFlies()
+        {
+            var activeIds = new HashSet<int>();
+            foreach (var fly in _game.GoldenFlyField.Flies)
+                activeIds.Add(fly.Id);
+
+            var toRemove = new List<int>();
+            foreach (var kv in _flyViews)
+                if (!activeIds.Contains(kv.Key))
+                    toRemove.Add(kv.Key);
+
+            foreach (var id in toRemove)
+            {
+                Destroy(_flyViews[id].gameObject);
+                _flyViews.Remove(id);
+            }
+
+            foreach (var fly in _game.GoldenFlyField.Flies)
+            {
+                if (_flyViews.TryGetValue(fly.Id, out var view))
+                {
+                    view.SyncPosition(fly);
+                }
+                else
+                {
+                    var go  = CreateSpriteQuad("GoldenFly_" + fly.Id, new Vector2(0.6f, 0.6f));
+                    go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.85f, 0.2f); // golden
+                    view    = go.AddComponent<GoldenFlyView>();
+                    var col = go.AddComponent<BoxCollider2D>();
+                    col.size = new Vector2(0.6f, 0.6f);
+                    view.Bind(fly);
+                    _flyViews[fly.Id] = view;
                 }
             }
         }
@@ -541,7 +624,23 @@ namespace RainbowFroggy.View
             countdownText.text         = "Freeze: 5.0s";
             _timeFreezeCountdownGO     = countdownGO;
 
-            _hud.Init(fliesText, scoreText, bestText, prismText, countdownText);
+            // Top-left (below flies): daily challenge progress ("Challenge: N / M").
+            var challengeGO              = new GameObject("ChallengeLabel");
+            challengeGO.transform.SetParent(hudGO.transform, false);
+            var challengeRT              = challengeGO.AddComponent<RectTransform>();
+            challengeRT.anchorMin        = new Vector2(0f, 1f);
+            challengeRT.anchorMax        = new Vector2(0f, 1f);
+            challengeRT.pivot            = new Vector2(0f, 1f);
+            challengeRT.anchoredPosition = new Vector2(20f, -76f); // 56 px below FliesLabel
+            challengeRT.sizeDelta        = new Vector2(220f, 44f);
+            var challengeText            = challengeGO.AddComponent<Text>();
+            challengeText.font           = FontLibrary.Body;
+            challengeText.fontSize       = 22;
+            challengeText.color          = new Color(1f, 0.85f, 0.2f); // golden
+            challengeText.text           = "Challenge: 0 / " +
+                                           _challengeService.Challenge.Target;
+
+            _hud.Init(fliesText, scoreText, bestText, prismText, countdownText, challengeText);
         }
 
         // ------------------------------------------------------------------
@@ -627,6 +726,21 @@ namespace RainbowFroggy.View
             promptText.alignment   = TextAnchor.MiddleCenter;
             promptText.color       = new Color(1f, 1f, 1f, 0.7f);
             promptText.text        = "TAP TO PLAY";
+
+            // Lifetime Fly balance — reads from FlyBank.LifetimeKey (AC6).
+            var lifetimeGO             = new GameObject("LifetimeFliesLabel");
+            lifetimeGO.transform.SetParent(chromeGO.transform, false);
+            var lifetimeRT             = lifetimeGO.AddComponent<RectTransform>();
+            lifetimeRT.anchorMin       = new Vector2(0.1f, 0.28f);
+            lifetimeRT.anchorMax       = new Vector2(0.9f, 0.38f);
+            lifetimeRT.offsetMin       = Vector2.zero;
+            lifetimeRT.offsetMax       = Vector2.zero;
+            _lifetimeFliesText         = lifetimeGO.AddComponent<Text>();
+            _lifetimeFliesText.font    = FontLibrary.Body;
+            _lifetimeFliesText.fontSize    = 26;
+            _lifetimeFliesText.alignment   = TextAnchor.MiddleCenter;
+            _lifetimeFliesText.color       = new Color(1f, 0.85f, 0.2f); // golden
+            _lifetimeFliesText.text        = "Flies: " + FlyBank.Get();
 
             // Full-screen transparent tap-zone button (sits behind the title text
             // in the hierarchy so the title renders on top).
