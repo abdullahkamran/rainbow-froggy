@@ -141,6 +141,7 @@ namespace RainbowFroggy.View
                 _audioService.PlayWaterfall();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
+                LeaderboardStore.Record(_game.Score);
                 int challengeBonus1 = _challengeService.TryGrantBonus();
                 _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus1);
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
@@ -363,6 +364,7 @@ namespace RainbowFroggy.View
                 _audioService.PlayMisstep();
                 PlayerPrefs.SetInt("HighScore", _game.HighScore);
                 PlayerPrefs.Save();
+                LeaderboardStore.Record(_game.Score);
                 int challengeBonus2 = _challengeService.TryGrantBonus();
                 _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus2);
                 bool  newHigh2 = _game.IsNewHighScore;
@@ -828,7 +830,7 @@ namespace RainbowFroggy.View
             _createdRoots.Add(sheetCanvas);
 
             var wardrobeSheet    = BuildBottomSheet(sheetCanvas.transform, "Wardrobe",    "Wardrobe");
-            var leaderboardSheet = BuildBottomSheet(sheetCanvas.transform, "Leaderboard", "Leaderboard");
+            var leaderboardSheet = BuildBottomSheet(sheetCanvas.transform, "Leaderboard", "Leaderboard", 560f);
             var settingsSheet    = BuildBottomSheet(sheetCanvas.transform, "Settings",    "Settings");
 
             // Populate the settings sheet with the mute toggle (AC8).
@@ -840,6 +842,10 @@ namespace RainbowFroggy.View
             wp.Init(wardrobeSheet.transform, _skinService,
                     () => _game.HighScore,
                     skin => { if (_frogView != null) _frogView.SetSkin(skin?.sprite); });
+
+            // Populate the leaderboard sheet with the run-history list.
+            var lp = leaderboardSheet.gameObject.AddComponent<LeaderboardPanel>();
+            lp.Init(leaderboardSheet.transform, leaderboardSheet);
 
             // ---- Nav buttons ----
             Button wardrobeBtn    = BuildNavButton(navGO.transform, "Wardrobe",    0);
@@ -890,9 +896,9 @@ namespace RainbowFroggy.View
 
         // Create a slide-up bottom-sheet panel with a title and close button.
         private BottomSheet BuildBottomSheet(Transform canvasParent,
-                                             string goName, string title)
+                                             string goName, string title,
+                                             float sheetHeight = 360f)
         {
-            const float sheetHeight = 360f;
 
             var go  = new GameObject("Sheet_" + goName);
             go.transform.SetParent(canvasParent, false);

@@ -239,3 +239,38 @@ skin has "unique animations," but no per-skin animation parameters are
 defined in any locally accessible document.  Until the PRD (relevant
 section) or a design spec is exported and committed to the repository,
 per-skin differentiation is **out of scope for this implementation**.
+
+## Leaderboard (issue #36)
+
+### PlayerPrefs key and serialisation format
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `LeaderboardStore.Key = "Leaderboard"` | `string` | Serialised as `"score\|ticks;score\|ticks;…"` where `ticks` is `DateTime.UtcNow.Ticks` (UTC) |
+
+The entire history is stored in a single string; up to
+`LeaderboardStore.MaxEntries = 10` entries are retained.  A missing key or a
+blank value returns an empty list with no exception thrown.
+
+### Sort and tiebreak rule
+
+Entries are sorted **score descending**.  On a score tie the **more recent**
+entry (higher `DateUtc.Ticks`) ranks first.  The cap is enforced on every
+write; entries beyond position 10 are discarded.
+
+### Personal-best highlight rule
+
+The entry at position 0 in the sorted list (all-time highest score) receives a
+gold background (`Image.color = new Color(0.55f, 0.42f, 0.00f, 0.70f)`) and
+bold font.  All other rows reset to the default dark style on every `Refresh()`
+call so the highlight never accumulates on a stale row.  On a score tie,
+exactly one row (position 0, the most recent of the tied scores) is
+highlighted.
+
+### PRD §10.2 — nav-slot placement
+
+PRD §10.2 is not committed to this repository and has no accessible URL.  The
+leaderboard nav button inherits the position created by
+`BuildNavButton(…, "Leaderboard", 1)` (centre slot of the three-button bar)
+and is **not** verified against that section of the spec.  See @Faiqah181's
+note in the issue discussion (2026-09-24).
