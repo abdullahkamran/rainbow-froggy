@@ -16,6 +16,11 @@ namespace RainbowFroggy.View
         private float         _openY;   // anchoredPosition.y when shown
         private Coroutine     _active;
 
+        // Fired by Open() before the slide animation begins.  Subscribe here
+        // rather than relying on OnEnable so the callback mechanism is
+        // explicit and decoupled from SetActive behaviour.
+        public event Action OnOpened;
+
         // Called by GameBootstrap after the RectTransform is set up.
         public void Init(RectTransform rt, float closedY, float openY)
         {
@@ -33,6 +38,7 @@ namespace RainbowFroggy.View
         {
             if (_active != null) StopCoroutine(_active);
             gameObject.SetActive(true);
+            OnOpened?.Invoke();
             _active = StartCoroutine(SlideTo(_openY, null));
         }
 
