@@ -88,6 +88,11 @@ namespace RainbowFroggy.Core
         private float _gameTime;
         private float _lastJumpTime = float.NegativeInfinity;
 
+        // The type collected during the most recent successful jump landing, or null
+        // if no pickup was on the landed pad.  Set by TapPad; read by the view layer
+        // to play power-up SFX on arrival (not on tap).
+        public PowerUpType? LastCollectedPowerUp { get; private set; }
+
         // Time Freeze internal state.
         private bool  _isTimeFreezeActive;
         private float _timeFreezeRemaining;
@@ -160,9 +165,10 @@ namespace RainbowFroggy.Core
 
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
 
-            // Scroll power-up pickups and Golden Flies at the same effective speed as pads.
+            // Advance power-up pickups: mirror positions from pads (no independent scroll).
+            // Advance Golden Flies at the same effective speed as pads.
+            _powerUpField.Tick(dt, _field.Pads, FrogColor);
             float effectiveSpeed = _field.ScrollSpeed * _field.ScrollSpeedMultiplier;
-            _powerUpField.Tick(dt, effectiveSpeed);
             _goldenFlyField.Tick(dt, effectiveSpeed);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
@@ -177,8 +183,9 @@ namespace RainbowFroggy.Core
             }
         }
 
-        // Collect a power-up pickup.  Called by the view layer when the player
-        // taps a floating power-up object.
+        // Collect a power-up pickup.  Called internally by TapPad when the frog
+        // lands on a pad that carries a pickup (jump-to-collect mechanic).
+        // Also exposed as a test seam via GameBootstrap.ForceCollectPowerUp.
         public void CollectPowerUp(PowerUpType type)
         {
             if (Screen != GameScreen.Playing) return;
@@ -227,6 +234,10 @@ namespace RainbowFroggy.Core
         // The player tapped a pad.
         public TapResult TapPad(int padId)
         {
+            // Clear any pickup collected by the previous jump so the view layer
+            // only plays SFX for the landing that is about to happen.
+            LastCollectedPowerUp = null;
+
             if (Screen != GameScreen.Playing) return TapResult.None;
 
             PadData target = null;
@@ -324,6 +335,16 @@ namespace RainbowFroggy.Core
                 FrogPadId   = -1;
             }
 
+            // Jump-to-collect: if the landed pad carries a pickup, collect it now.
+            // This is the only code path that grants power-up effects; there is no
+            // tap-to-collect path.
+            if (_powerUpField.TryCollectAt(padId, out var pickedUp))
+            {
+                _powerUpField.RemovePickup(pickedUp.Id);
+                CollectPowerUp(pickedUp.Type);
+                LastCollectedPowerUp = pickedUp.Type;
+            }
+
             JumpCount++;
             return TapResult.Jump;
         }
@@ -358,8 +379,9 @@ namespace RainbowFroggy.Core
             IsNewHighScore  = false;
             _gameTime       = 0f;
             _lastJumpTime   = float.NegativeInfinity;
-            IsPrismActive   = false;
-            PrismRemaining  = 0f;
+            IsPrismActive        = false;
+            PrismRemaining       = 0f;
+            LastCollectedPowerUp = null;
 
             // Reset power-up and Golden Fly state.
             _isTimeFreezeActive  = false;

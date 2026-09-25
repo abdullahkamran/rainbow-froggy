@@ -65,7 +65,7 @@ namespace RainbowFroggy.Tests.PlayMode
 
             Assert.IsNotNull(game, "RainbowFroggyGame must be accessible via reflection");
 
-            var data = game.PowerUpField.SpawnPickup();
+            var data = game.PowerUpField.SpawnPickup(game.Field.Pads, game.FrogColor);
             Assert.IsNotNull(data, "SpawnPickup must return a non-null PowerUpData");
 
             // Verify world position is within river bounds (x∈[-3.5,3.5], y∈[-5,5]).
