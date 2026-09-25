@@ -70,6 +70,11 @@ namespace RainbowFroggy.Core
         // so the test can always find a rotten pad before the run ends.
         private const float RottenSpawnInterval = 1.5f;
 
+        // Off-screen margin in normalised Y units.  Pads spawn above the top
+        // viewport edge (Y = -OffscreenMargin) and are removed only after they
+        // have scrolled fully past the bottom edge (Y >= 1 + OffscreenMargin).
+        private const float OffscreenMargin = 0.25f;
+
         // Countdown timer for the rotten-pad guarantee (Phase 3+).
         private float _rottenSpawnTimer;
 
@@ -178,7 +183,7 @@ namespace RainbowFroggy.Core
             // 2. Collect off-screen pads.
             var removed = new List<PadData>();
             foreach (var pad in _pads)
-                if (pad.Y >= 1.0f)
+                if (pad.Y >= 1.0f + OffscreenMargin)
                     removed.Add(pad);
 
             // 3. Guaranteed-path check: ensure at least one matching pad will
@@ -212,7 +217,7 @@ namespace RainbowFroggy.Core
                 {
                     _spawnsSinceRainbow = 0;
                     // Centre lane — no RNG needed.
-                    _pads.Add(new PadData(_nextId++, PadColor.Rainbow, 0.5f, 0f,
+                    _pads.Add(new PadData(_nextId++, PadColor.Rainbow, 0.5f, -OffscreenMargin,
                                           PadType.Rainbow));
                 }
             }
@@ -322,7 +327,7 @@ namespace RainbowFroggy.Core
                 vx = _rng.Next(0, 2) == 0 ? da : -da;
             }
 
-            _pads.Add(new PadData(_nextId++, color, RandomX(), 0f, type, vx, da));
+            _pads.Add(new PadData(_nextId++, color, RandomX(), -OffscreenMargin, type, vx, da));
         }
 
         // Phase 2+: after an invariant-enforcement spawn or late-arrival spawn,
@@ -358,7 +363,7 @@ namespace RainbowFroggy.Core
                 }
                 if (decoyColor == frogColor) continue;
 
-                _pads.Add(new PadData(_nextId++, decoyColor, lane, 0f));
+                _pads.Add(new PadData(_nextId++, decoyColor, lane, -OffscreenMargin));
                 spawned++;
             }
         }
@@ -383,7 +388,7 @@ namespace RainbowFroggy.Core
                 da = DriftSpeed;
                 vx = _rng.Next(0, 2) == 0 ? da : -da;
             }
-            _pads.Add(new PadData(_nextId++, frogColor, RandomX(), 0f,
+            _pads.Add(new PadData(_nextId++, frogColor, RandomX(), -OffscreenMargin,
                                   PadType.Rotten, vx, da));
         }
 

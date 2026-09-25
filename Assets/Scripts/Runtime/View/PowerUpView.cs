@@ -32,7 +32,7 @@ namespace RainbowFroggy.View
             // Same world-space convention as PadView: x in [-3.5, 3.5], y in [5, -5].
             // The +0.4 y offset places the pickup visually above the centre of its pad.
             float wx = Mathf.Lerp(-3.5f, 3.5f, data.X);
-            float wy = Mathf.Lerp(5f, -5f, data.Y);
+            float wy = Mathf.LerpUnclamped(5f, -5f, data.Y);
             transform.localPosition = new Vector3(wx, wy + 0.4f, 0f);
         }
 
