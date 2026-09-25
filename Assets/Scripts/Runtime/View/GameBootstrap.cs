@@ -303,22 +303,7 @@ namespace RainbowFroggy.View
             var hit      = Physics2D.OverlapPoint(worldPos);
             if (hit == null) return;
 
-            // Power-up pickup: collect it and remove its view.
-            var pickupView = hit.GetComponent<PowerUpView>();
-            if (pickupView != null)
-            {
-                _game.CollectPowerUp(pickupView.PickupType);
-                _audioService.PlayPowerUp(pickupView.PickupType);
-                _game.PowerUpField.RemovePickup(pickupView.PickupId);
-                if (_pickupViews.TryGetValue(pickupView.PickupId, out var pv))
-                {
-                    Destroy(pv.gameObject);
-                    _pickupViews.Remove(pickupView.PickupId);
-                }
-                return;
-            }
-
-            // Golden Fly collectible: same hit-test path as power-ups and pads (AC2).
+            // Golden Fly collectible: same hit-test path as pads (AC2).
             // Guard on _flyViews first: Unity's Destroy() is deferred to end-of-frame, so a fly
             // that was already removed from _flyViews by SyncFlies() (e.g. it scrolled off-screen
             // this Tick) still has a live collider.  Only grant score when the fly is still in our
@@ -345,6 +330,10 @@ namespace RainbowFroggy.View
                 // combo tier.  The double-fire guard in PlayJump handles rapid taps.
                 _audioService.PlayJump(_game.ComboMultiplier);
 
+                // Capture the pickup type now (synchronously after TapPad) so the
+                // closure below references the value for THIS jump, not a future one.
+                RainbowFroggy.Core.PowerUpType? collected = _game.LastCollectedPowerUp;
+
                 // Dispatch the jump tween immediately.  Color, anchor, and landing
                 // SFX are all applied inside the callback so they fire on arrival
                 // rather than at initiation (AC4).
@@ -356,6 +345,8 @@ namespace RainbowFroggy.View
                     _audioService.PlayLanding();                   // AC4: on arrival
                     if (padView.PadType == PadType.Rainbow)
                         _audioService.PlayRainbowPad();            // AC7: rainbow pad
+                    if (collected.HasValue)
+                        _audioService.PlayPowerUp(collected.Value); // power-up SFX on landing
                 });
             }
             else if (result == TapResult.Misstep)
@@ -475,14 +466,15 @@ namespace RainbowFroggy.View
                 {
                     var go  = new GameObject("PowerUp_" + pu.Id);
                     var psr = go.AddComponent<SpriteRenderer>();
-                    psr.sprite   = SpriteFactory.PowerUp(pu.Type);
-                    psr.material = _spriteMat;
+                    psr.sprite       = SpriteFactory.PowerUp(pu.Type);
+                    psr.material     = _spriteMat;
+                    psr.sortingOrder = 1;  // render above lily pads (sortingOrder 0)
                     go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
                     view    = go.AddComponent<PowerUpView>();
-                    var col = go.AddComponent<CircleCollider2D>();
-                    col.radius = 0.5f;
+                    // No CircleCollider2D — pickups are not tappable.
+                    // Collection happens via jump-landing (TryCollectAt in TapPad).
                     view.Bind(pu);
-                    go.GetComponent<SpriteRenderer>().color = Color.white;
+                    psr.color = Color.white;
                     _pickupViews[pu.Id] = view;
                 }
             }

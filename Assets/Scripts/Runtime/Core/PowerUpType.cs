@@ -20,4 +20,20 @@ namespace RainbowFroggy.Core
         public const int PrismWeight       =  5;
         public const int StandardPadWeight = 10;  // reference weight for normal pads
     }
+
+    // Placement and lifecycle constants for pad-attached pickups.
+    // Changing RewardPadFraction alone shifts the trick/reward spawn distribution
+    // without requiring any other code changes.
+    public static class PowerUpPlacement
+    {
+        // Fraction of spawns placed on pads whose colour matches the frog (reward pads).
+        // The remainder go on non-matching pads (trick pads).  0.30 = 30 % reward.
+        public const float RewardPadFraction = 0.30f;
+
+        // Maximum number of pickups visible on screen at one time.
+        public const int MaxActivePickups = 3;
+
+        // Seconds a pickup remains on its pad before despawning automatically.
+        public const float LifetimeSeconds = 8f;
+    }
 }

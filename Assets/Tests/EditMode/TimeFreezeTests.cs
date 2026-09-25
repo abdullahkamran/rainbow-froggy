@@ -16,9 +16,15 @@ namespace RainbowFroggy.Tests.EditMode
         public void SpawnPickup_TimeFreezeType_IsNonNullAndWithinBounds()
         {
             // Force all rolls to TimeFreeze by using a CycleRng that rolls 0 every time.
+            // Seed two pads (one reward, one trick) so SpawnPickup has eligible candidates.
             var rng    = new CycleRng(new int[] { 0 });
             var field  = new PowerUpField(rng);
-            var pickup = field.SpawnPickup();
+            var pads   = new System.Collections.Generic.List<PadData>
+            {
+                new PadData(0, PadColor.Ruby, 0.2f, 0.3f),  // reward pad (frogColor = Ruby)
+                new PadData(1, PadColor.Cyan, 0.5f, 0.6f),  // trick pad
+            };
+            var pickup = field.SpawnPickup(pads, PadColor.Ruby);
 
             Assert.IsNotNull(pickup, "SpawnPickup must return a non-null PowerUpData");
             Assert.AreEqual(PowerUpType.TimeFreeze, pickup.Type,
