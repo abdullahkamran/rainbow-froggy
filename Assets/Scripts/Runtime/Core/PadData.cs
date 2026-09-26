@@ -9,6 +9,7 @@ namespace RainbowFroggy.Core
         public readonly PadType  Type;
 
         // Normalised vertical position: 0 = top of play area, 1 = bottom edge.
+        // Negative values are above the viewport; values > 1 are below it.
         public float Y;
 
         // Horizontal lane centre, normalised to [0, 1].  Mutable so drift can
