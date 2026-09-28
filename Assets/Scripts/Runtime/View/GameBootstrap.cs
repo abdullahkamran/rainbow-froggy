@@ -144,6 +144,7 @@ namespace RainbowFroggy.View
                 LeaderboardStore.Record(_game.Score);
                 int challengeBonus1 = _challengeService.TryGrantBonus();
                 _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus1);
+                _gameOverScreen.SetChallengeBanner(_challengeService.Challenge.Name, challengeBonus1);
                 float worldSpeed = _game.Field.ScrollSpeed * 10f;
                 bool  newHigh1   = _game.IsNewHighScore;
                 int   hi1        = _game.HighScore;
@@ -358,6 +359,7 @@ namespace RainbowFroggy.View
                 LeaderboardStore.Record(_game.Score);
                 int challengeBonus2 = _challengeService.TryGrantBonus();
                 _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus2);
+                _gameOverScreen.SetChallengeBanner(_challengeService.Challenge.Name, challengeBonus2);
                 bool  newHigh2 = _game.IsNewHighScore;
                 int   hi2      = _game.HighScore;
                 int   sc2      = _game.Score;
@@ -1006,12 +1008,19 @@ namespace RainbowFroggy.View
                 fontSize: 34, bold: false, align: TextAnchor.MiddleCenter);
             scoreText.text = "Score: 0";
 
-            // Flies earned.
+            // Flies earned.  Nudged up slightly to make room for the challenge banner below.
             var fliesText = MakeLabel(panelGO.transform, "FliesLabel",
-                new Vector2(0.15f, 0.48f), new Vector2(0.85f, 0.58f),
+                new Vector2(0.15f, 0.50f), new Vector2(0.85f, 0.58f),
                 fontSize: 30, bold: false, align: TextAnchor.MiddleCenter);
             fliesText.color = new Color(1f, 0.85f, 0.2f); // golden
             fliesText.text  = "Flies: 0";
+
+            // Challenge-complete banner — shown only when a daily-challenge bonus was earned.
+            var challengeBannerText = MakeLabel(panelGO.transform, "ChallengeBanner",
+                new Vector2(0.08f, 0.455f), new Vector2(0.92f, 0.495f),
+                fontSize: 24, bold: true, align: TextAnchor.MiddleCenter);
+            challengeBannerText.color = new Color(1f, 0.85f, 0.2f); // golden
+            challengeBannerText.text  = "";
 
             // Second Chance button.
             var secondChanceBtn = MakeButton(panelGO.transform, "SecondChance",
@@ -1055,6 +1064,7 @@ namespace RainbowFroggy.View
                                  secondChanceBtn, flyMultiplierBtn, restartBtn,
                                  OnRestart);
             _gameOverScreen.InitHighScore(bestText, newHighGO);
+            _gameOverScreen.InitChallengeBanner(challengeBannerText);
         }
 
         // ------------------------------------------------------------------ //

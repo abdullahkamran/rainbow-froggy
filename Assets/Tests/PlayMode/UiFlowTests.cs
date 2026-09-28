@@ -165,6 +165,43 @@ namespace RainbowFroggy.Tests.PlayMode
         }
 
         // ------------------------------------------------------------------ //
+        // Challenge-complete banner: shown when bonus > 0, hidden when bonus == 0
+        // ------------------------------------------------------------------ //
+
+        [UnityTest]
+        public IEnumerator ChallengeBanner_ShownWithBonus_HiddenWithoutBonus()
+        {
+            yield return CreateBootstrap();
+
+            var screen  = _bootstrap.GameOverScreen;
+            var panelGO = screen.gameObject;
+
+            // ---- bonus > 0: banner must be active and display name + bonus ----
+            screen.SetChallengeBanner("Fly Frenzy", 25);
+            screen.Show(GameScreen.MisstepGameOver, 10, 4);
+
+            var bannerT = panelGO.transform.Find("ChallengeBanner");
+            Assert.IsNotNull(bannerT, "ChallengeBanner child must exist in GameOverPanel");
+            Assert.IsTrue(bannerT.gameObject.activeSelf,
+                "ChallengeBanner must be active when bonus > 0");
+            var bannerTxt = bannerT.GetComponent<Text>();
+            Assert.IsNotNull(bannerTxt, "ChallengeBanner must have a Text component");
+            Assert.IsTrue(bannerTxt.text.Contains("25"),
+                "Banner text must contain the bonus amount");
+            Assert.IsTrue(bannerTxt.text.Contains("Fly Frenzy"),
+                "Banner text must contain the challenge name");
+
+            // ---- bonus == 0: banner must be inactive ----
+            screen.SetChallengeBanner("Fly Frenzy", 0);
+            screen.Show(GameScreen.MisstepGameOver, 10, 4);
+
+            Assert.IsFalse(bannerT.gameObject.activeSelf,
+                "ChallengeBanner must be inactive when bonus == 0");
+
+            yield return null;
+        }
+
+        // ------------------------------------------------------------------ //
         // AC8: Restart resets game state in-place without loading another scene
         // ------------------------------------------------------------------ //
 

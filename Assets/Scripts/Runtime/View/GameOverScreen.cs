@@ -32,6 +32,11 @@ namespace RainbowFroggy.View
         private Text       _bestScoreLabel;
         private GameObject _newHighScoreGO;
 
+        // Challenge-complete banner wired by InitChallengeBanner (optional; safe to skip in tests).
+        private Text   _challengeLabel;
+        private string _challengeName;
+        private int    _challengeBonus;
+
         // Ad service and revive callback wired by InitAds (optional; safe to skip in tests).
         private IAdService _ads;
         private Action     _onRevive;
@@ -66,6 +71,21 @@ namespace RainbowFroggy.View
             if (_newHighScoreGO != null) _newHighScoreGO.SetActive(false);
         }
 
+        // Wire the optional challenge-complete banner created by GameBootstrap.
+        public void InitChallengeBanner(Text label)
+        {
+            _challengeLabel = label;
+            if (_challengeLabel != null) _challengeLabel.gameObject.SetActive(false);
+        }
+
+        // Store the challenge name and bonus for the next Show() call.  Called by
+        // GameBootstrap immediately after SetPendingFlies().
+        public void SetChallengeBanner(string name, int bonus)
+        {
+            _challengeName  = name;
+            _challengeBonus = bonus;
+        }
+
         // Wire the ad service and revive callback.  Called by GameBootstrap after Init.
         // Second Chance and Fly Multiplier onClick listeners are added here.
         public void InitAds(IAdService ads, Action onRevive)
@@ -97,6 +117,7 @@ namespace RainbowFroggy.View
             if (_bestScoreLabel  != null) _bestScoreLabel.gameObject.SetActive(false);
             if (_newHighScoreGO  != null) _newHighScoreGO.SetActive(false);
 
+            ApplyChallengeBanner();
             SetAdButtonsInteractable(true);
             gameObject.SetActive(true);
         }
@@ -119,6 +140,7 @@ namespace RainbowFroggy.View
             if (_newHighScoreGO != null)
                 _newHighScoreGO.SetActive(isNewHigh);
 
+            ApplyChallengeBanner();
             SetAdButtonsInteractable(true);
             gameObject.SetActive(true);
         }
@@ -126,6 +148,23 @@ namespace RainbowFroggy.View
         public void Hide()
         {
             gameObject.SetActive(false);
+        }
+
+        // Show or hide the challenge-complete banner depending on whether a bonus was earned.
+        private void ApplyChallengeBanner()
+        {
+            if (_challengeLabel == null) return;
+            if (_challengeBonus > 0)
+            {
+                _challengeLabel.color = new Color(1f, 0.85f, 0.2f); // golden
+                _challengeLabel.text  = string.Format("✓ {0}  +{1} flies",
+                                                      _challengeName, _challengeBonus);
+                _challengeLabel.gameObject.SetActive(true);
+            }
+            else
+            {
+                _challengeLabel.gameObject.SetActive(false);
+            }
         }
 
         // Enable or disable both ad-gated buttons together.
