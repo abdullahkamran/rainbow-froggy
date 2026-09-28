@@ -22,6 +22,7 @@ namespace RainbowFroggy.View
             PadId     = data.Id;
             PadType   = data.Type;
             _sr.color = ColorPalette.For(data.Color);
+            if (data.Type == PadType.Rotten) _sr.color = ColorPalette.Rotten(_sr.color);
             SyncPosition(data);
         }
 
