@@ -36,6 +36,15 @@ namespace RainbowFroggy.View
         // Prism pickup tint — bright gold, visible against the river.
         public static readonly Color PrismPickup  = new Color(1f, 0.878f, 0.2f); // #FFE033
 
+        // Rotten Pad tint — dark muddy brown mixed into the pad's base colour.
+        public const string RottenMudHex = "#33190D"; // Rotten Muddy Brown
+        public static readonly Color RottenMud = new Color(0.2f, 0.1f, 0.05f); // #33190D
+
+        // Returns baseColor mixed 55 % toward RottenMud so the pad looks degraded.
+        // Only the SpriteRenderer.color is affected; PadData.Color is never touched.
+        public static Color Rotten(Color baseColor) =>
+            Color.Lerp(baseColor, RottenMud, 0.55f);
+
         // Internal aliases for For() — keeps the switch readable.
         private static readonly Color _ruby   = RubyRed;
         private static readonly Color _cyan   = ElectricCyan;
