@@ -33,10 +33,6 @@ namespace RainbowFroggy.View
         private readonly Dictionary<int, PowerUpView> _pickupViews =
             new Dictionary<int, PowerUpView>();
 
-        // flyId → GoldenFlyView
-        private readonly Dictionary<int, GoldenFlyView> _flyViews =
-            new Dictionary<int, GoldenFlyView>();
-
         // Power-up UI: frost overlay and HUD countdown.
         private GameObject _frostOverlayGO;
         private GameObject _timeFreezeCountdownGO;
@@ -85,12 +81,6 @@ namespace RainbowFroggy.View
                 new SeededRng(UnityEngine.Random.Range(0, int.MaxValue)));
             _game.HighScore = PlayerPrefs.GetInt("HighScore", 0);
             _game.EnterIdle();
-
-            // Forward the serialized spawn rate to the GoldenFlyField so the
-            // Inspector value is respected at runtime (AC1).
-            var flySpawner = GetComponent<GoldenFlySpawner>();
-            if (flySpawner != null)
-                _game.GoldenFlyField.SpawnInterval = flySpawner.SpawnIntervalSeconds;
 
             _challengeService = new ChallengeService();
 
@@ -156,7 +146,6 @@ namespace RainbowFroggy.View
 
             SyncAllPads();
             SyncPickups();
-            SyncFlies();
             _hud.SetData(_game.Score, _game.ComboMultiplier, _game.HighScore,
                          _game.FliesThisRun);
             _hud.SetPrism(_game.IsPrismActive, _game.PrismRemaining);
@@ -204,11 +193,6 @@ namespace RainbowFroggy.View
             foreach (var kv in _pickupViews)
                 Destroy(kv.Value.gameObject);
             _pickupViews.Clear();
-
-            // Destroy all fly views; SyncFlies re-creates them as needed.
-            foreach (var kv in _flyViews)
-                Destroy(kv.Value.gameObject);
-            _flyViews.Clear();
 
             // Hide power-up overlays.
             if (_frostOverlayGO        != null) _frostOverlayGO.SetActive(false);
@@ -302,22 +286,6 @@ namespace RainbowFroggy.View
             var worldPos = Camera.main.ScreenToWorldPoint(screenPos);
             var hit      = Physics2D.OverlapPoint(worldPos);
             if (hit == null) return;
-
-            // Golden Fly collectible: same hit-test path as pads (AC2).
-            // Guard on _flyViews first: Unity's Destroy() is deferred to end-of-frame, so a fly
-            // that was already removed from _flyViews by SyncFlies() (e.g. it scrolled off-screen
-            // this Tick) still has a live collider.  Only grant score when the fly is still in our
-            // view dictionary, which is the authoritative "still collectible" gate.
-            var flyView = hit.GetComponent<GoldenFlyView>();
-            if (flyView != null && _flyViews.TryGetValue(flyView.FlyId, out var fv))
-            {
-                _game.CollectFly();
-                _game.GoldenFlyField.RemoveFly(flyView.FlyId);
-                Destroy(fv.gameObject);
-                _flyViews.Remove(flyView.FlyId);
-                _challengeService.RecordFlyCollected();
-                return;
-            }
 
             var padView = hit.GetComponent<PadView>();
             if (padView == null) return;
@@ -476,45 +444,6 @@ namespace RainbowFroggy.View
                     view.Bind(pu);
                     psr.color = Color.white;
                     _pickupViews[pu.Id] = view;
-                }
-            }
-        }
-
-        private void SyncFlies()
-        {
-            var activeIds = new HashSet<int>();
-            foreach (var fly in _game.GoldenFlyField.Flies)
-                activeIds.Add(fly.Id);
-
-            var toRemove = new List<int>();
-            foreach (var kv in _flyViews)
-                if (!activeIds.Contains(kv.Key))
-                    toRemove.Add(kv.Key);
-
-            foreach (var id in toRemove)
-            {
-                Destroy(_flyViews[id].gameObject);
-                _flyViews.Remove(id);
-            }
-
-            foreach (var fly in _game.GoldenFlyField.Flies)
-            {
-                if (_flyViews.TryGetValue(fly.Id, out var view))
-                {
-                    view.SyncPosition(fly);
-                }
-                else
-                {
-                    var go  = new GameObject("GoldenFly_" + fly.Id);
-                    var fsr = go.AddComponent<SpriteRenderer>();
-                    fsr.sprite   = SpriteFactory.GoldenFly();
-                    fsr.material = _spriteMat;
-                    go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
-                    view    = go.AddComponent<GoldenFlyView>();
-                    var col = go.AddComponent<CircleCollider2D>();
-                    col.radius = 0.5f;
-                    view.Bind(fly);
-                    _flyViews[fly.Id] = view;
                 }
             }
         }
