@@ -14,13 +14,39 @@ namespace RainbowFroggy.View
         private const float WiggleAmplitude = 8f;
         private const float WiggleFreq      = 1.5708f; // 2π / 4 s
 
+        // Lily pad base is always solid green; the flower carries the pad's effective colour.
+        private static readonly Color LilyPadGreen = new Color(0.18f, 0.60f, 0.18f);
+
         private SpriteRenderer _sr;
+        private SpriteRenderer _flowerSr;
         private float          _wigglePhase;
 
         private void Awake()
         {
             _sr          = GetComponent<SpriteRenderer>();
             _wigglePhase = Random.Range(0f, Mathf.PI * 2f);
+            EnsureRefs();
+        }
+
+        // Idempotent setup: creates the flower child once and caches both SpriteRenderers.
+        // Also called from Bind() so the order of Awake vs. Bind can never produce a null-ref.
+        private void EnsureRefs()
+        {
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
+            _sr.sprite = SpriteFactory.LilyPad();
+
+            if (_flowerSr == null)
+            {
+                var flowerGO                  = new GameObject("Flower");
+                flowerGO.transform.SetParent(transform, false);
+                flowerGO.transform.localPosition = new Vector3(0f, 0f, -0.01f);
+                flowerGO.transform.localScale    = new Vector3(0.5f, 0.5f, 1f);
+                _flowerSr                     = flowerGO.AddComponent<SpriteRenderer>();
+                _flowerSr.sprite              = SpriteFactory.Flower();
+                _flowerSr.sharedMaterial      = _sr.sharedMaterial;
+                _flowerSr.sortingLayerID      = _sr.sortingLayerID;
+                _flowerSr.sortingOrder        = _sr.sortingOrder;
+            }
         }
 
         private void Update()
@@ -32,9 +58,11 @@ namespace RainbowFroggy.View
 
         public void Bind(PadData data)
         {
-            PadId     = data.Id;
-            PadType   = data.Type;
-            _sr.color = ColorPalette.For(data.Color);
+            PadId   = data.Id;
+            PadType = data.Type;
+            EnsureRefs();
+            _sr.color       = LilyPadGreen;
+            _flowerSr.color = ColorPalette.For(data.Color);
             SyncPosition(data);
         }
 

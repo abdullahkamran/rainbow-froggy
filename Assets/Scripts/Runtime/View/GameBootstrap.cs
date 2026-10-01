@@ -403,10 +403,8 @@ namespace RainbowFroggy.View
                     if (isLotus)
                     {
                         go = new GameObject("LotusPad_" + pad.Id);
-                        var lsr     = go.AddComponent<SpriteRenderer>();
-                        lsr.sprite  = FrogView.MakeCircleSprite(32);
+                        var lsr      = go.AddComponent<SpriteRenderer>();
                         lsr.material = _spriteMat;
-                        lsr.color   = new Color(1f, 0.5f, 0.8f);
                         go.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
@@ -414,8 +412,7 @@ namespace RainbowFroggy.View
                     else
                     {
                         go = new GameObject("Pad_" + pad.Id);
-                        var sr     = go.AddComponent<SpriteRenderer>();
-                        sr.sprite  = FrogView.MakeCircleSprite(32);
+                        var sr      = go.AddComponent<SpriteRenderer>();
                         sr.material = _spriteMat;
                         go.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
