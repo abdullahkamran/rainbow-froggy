@@ -51,8 +51,7 @@ namespace RainbowFroggy.Core
         public PadColor   FrogColor       { get; private set; }
         public int        Phase           { get; private set; } = 1;
 
-        // Golden Fly collectibles tapped during the current run.
-        // Incremented by CollectFly(), NOT by TapPad (AC2).
+        // Golden Flies collected during the current run.
         public int        FliesThisRun    { get; private set; }
 
         // Total number of successful jumps made in this session.
@@ -79,11 +78,9 @@ namespace RainbowFroggy.Core
         // Exposed so tests and GameBootstrap can query field state directly.
         public PadField       Field          => _field;
         public PowerUpField   PowerUpField   => _powerUpField;
-        public GoldenFlyField GoldenFlyField => _goldenFlyField;
 
         private readonly PadField       _field;
         private readonly PowerUpField   _powerUpField;
-        private readonly GoldenFlyField _goldenFlyField;
         private readonly IRng           _rng;
         private float _gameTime;
         private float _lastJumpTime = float.NegativeInfinity;
@@ -107,7 +104,6 @@ namespace RainbowFroggy.Core
             FrogColor       = Phase1Colors.Active[rng.Next(0, Phase1Colors.Active.Length)];
             _field          = new PadField(rng);
             _powerUpField   = new PowerUpField(rng);
-            _goldenFlyField = new GoldenFlyField(rng);
             _field.Initialize(FrogColor);
 
             // Frog starts on the first matching pad.
@@ -166,10 +162,7 @@ namespace RainbowFroggy.Core
             List<PadData> offScreen = _field.Tick(dt, FrogColor);
 
             // Advance power-up pickups: mirror positions from pads (no independent scroll).
-            // Advance Golden Flies at the same effective speed as pads.
             _powerUpField.Tick(dt, _field.Pads, FrogColor);
-            float effectiveSpeed = _field.ScrollSpeed * _field.ScrollSpeedMultiplier;
-            _goldenFlyField.Tick(dt, effectiveSpeed);
 
             // Waterfall: only if the frog's own riding pad scrolled off.
             foreach (var gone in offScreen)
@@ -383,13 +376,12 @@ namespace RainbowFroggy.Core
             PrismRemaining       = 0f;
             LastCollectedPowerUp = null;
 
-            // Reset power-up and Golden Fly state.
+            // Reset power-up state.
             _isTimeFreezeActive  = false;
             _timeFreezeRemaining = 0f;
             _preFreezeMult       = 1.0f;
             _lotusPadId          = -1;
             _powerUpField.Reset();
-            _goldenFlyField.Reset();
 
             FrogColor = Phase1Colors.Active[_rng.Next(0, Phase1Colors.Active.Length)];
             _field.Reset();
