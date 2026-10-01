@@ -55,8 +55,8 @@ namespace RainbowFroggy.Tests.EditMode
             var field = new PadField(new SeededRng(1));
             field.Initialize(PadColor.Ruby);
             field.SetPhase(2);
-            Assert.AreEqual(0.18f, field.ScrollSpeed, 1e-5f,
-                "Phase 2 scroll speed must be 0.12 × 1.5 = 0.18");
+            Assert.AreEqual(0.36f, field.ScrollSpeed, 1e-5f,
+                "Phase 2 scroll speed must be 0.24 × 1.5 = 0.36");
         }
 
         [Test]

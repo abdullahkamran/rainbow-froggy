@@ -17,8 +17,11 @@ namespace RainbowFroggy.View
         public const string ElectricCyanHex = "#00E5FF"; // AC3: Electric Cyan
         public const string ToxicPurpleHex  = "#B429F9"; // AC3: Toxic Purple
         public const string NeonPinkHex     = "#FF3399"; // AC3: Neon Pink
-        public const string RainbowPadHex   = "#FFFFFF"; // Rainbow Pad: white/shimmer
-        public const string PrismPickupHex  = "#FFE033"; // Prism pickup: bright gold
+        public const string NeonLimeHex     = "#AAFF00"; // AC3: Neon Lime
+        public const string HotOrangeHex   = "#FF6600"; // AC3: Hot Orange
+        public const string SkyBlueHex     = "#00AAFF"; // AC3: Sky Blue
+        public const string RainbowPadHex  = "#FFFFFF"; // Rainbow Pad: white/shimmer
+        public const string PrismPickupHex = "#FFE033"; // Prism pickup: bright gold
 
         // ---- Named Color constants (AC3) ----
 
@@ -27,6 +30,9 @@ namespace RainbowFroggy.View
         public static readonly Color ElectricCyan  = new Color(0f,     0.898f, 1f);     // #00E5FF
         public static readonly Color ToxicPurple   = new Color(0.706f, 0.161f, 0.976f); // #B429F9
         public static readonly Color NeonPink      = new Color(1f,     0.2f,   0.6f);   // #FF3399
+        public static readonly Color NeonLime      = new Color(0.667f, 1f,     0f);     // #AAFF00
+        public static readonly Color HotOrange     = new Color(1f,     0.4f,   0f);     // #FF6600
+        public static readonly Color SkyBlue       = new Color(0f,     0.667f, 1f);     // #00AAFF
 
         // River / background tint — Indigo Deep Water (AC2: #1A2543).
         public static readonly Color River = new Color(0.102f, 0.145f, 0.263f); // #1A2543
@@ -42,6 +48,9 @@ namespace RainbowFroggy.View
         private static readonly Color _mango  = MangoYellow;
         private static readonly Color _purple = ToxicPurple;
         private static readonly Color _pink   = NeonPink;
+        private static readonly Color _lime   = NeonLime;
+        private static readonly Color _orange = HotOrange;
+        private static readonly Color _sky    = SkyBlue;
 
         public static Color For(PadColor c)
         {
@@ -52,6 +61,9 @@ namespace RainbowFroggy.View
                 case PadColor.Mango:   return _mango;
                 case PadColor.Purple:  return _purple;
                 case PadColor.Pink:    return _pink;
+                case PadColor.Lime:    return _lime;
+                case PadColor.Orange:  return _orange;
+                case PadColor.Sky:     return _sky;
                 case PadColor.Rainbow: return RainbowPad;
                 default:               return Color.white;
             }
