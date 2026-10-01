@@ -9,7 +9,10 @@ namespace RainbowFroggy.Core
         Mango   = 2,
         Purple  = 3,
         Pink    = 4,
-        Rainbow = 5,   // sentinel for the white/shimmer pad; never in PhaseColors arrays
+        Lime    = 5,
+        Orange  = 6,
+        Sky     = 7,
+        Rainbow = 8,   // sentinel for the white/shimmer pad; never in PhaseColors arrays
     }
 
     public enum PadType
@@ -22,10 +25,10 @@ namespace RainbowFroggy.Core
 
     public static class PhaseColors
     {
-        public static readonly PadColor[] Phase1 = { PadColor.Ruby, PadColor.Cyan };
-        public static readonly PadColor[] Phase2 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango };
-        public static readonly PadColor[] Phase3 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango, PadColor.Purple };
-        public static readonly PadColor[] Phase4 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango, PadColor.Purple, PadColor.Pink };
+        public static readonly PadColor[] Phase1 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango };
+        public static readonly PadColor[] Phase2 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango, PadColor.Purple, PadColor.Pink };
+        public static readonly PadColor[] Phase3 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango, PadColor.Purple, PadColor.Pink, PadColor.Lime };
+        public static readonly PadColor[] Phase4 = { PadColor.Ruby, PadColor.Cyan, PadColor.Mango, PadColor.Purple, PadColor.Pink, PadColor.Lime, PadColor.Orange, PadColor.Sky };
 
         public static PadColor[] ForPhase(int phase)
         {

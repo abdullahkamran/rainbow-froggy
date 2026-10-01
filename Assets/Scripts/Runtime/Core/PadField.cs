@@ -22,7 +22,7 @@ namespace RainbowFroggy.Core
         public const int RainbowPadInterval = 8;
 
         // Base scroll speed for Phase 1; scaled by SetPhase.
-        private float _scrollSpeed = 0.12f;
+        private float _scrollSpeed = 0.24f;
 
         // Multiplier applied on top of the base scroll speed (1.0 = normal).
         // Power-ups write this to slow or speed the river without changing the
@@ -95,7 +95,7 @@ namespace RainbowFroggy.Core
             _lateArrivalPending    = false;
             _lateArrivalTimer      = 0f;
             _phase                 = 0;
-            _scrollSpeed           = 0.12f;
+            _scrollSpeed           = 0.24f;
             _scrollSpeedMultiplier = 1.0f;
             _activePalette         = PhaseColors.Phase1;
             _rottenEnabled         = false;
@@ -119,15 +119,16 @@ namespace RainbowFroggy.Core
 
             switch (phase)
             {
-                case 1:  _scrollSpeed = 0.12f; break; // ×1.0
-                case 2:  _scrollSpeed = 0.18f; break; // ×1.5
-                case 3:  _scrollSpeed = 0.30f; break; // ×2.5
-                default: _scrollSpeed = 0.48f; break; // ×4.0  (phase 4+)
+                case 1:  _scrollSpeed = 0.24f; break; // ×1.0
+                case 2:  _scrollSpeed = 0.36f; break; // ×1.5
+                case 3:  _scrollSpeed = 0.60f; break; // ×2.5
+                default: _scrollSpeed = 0.96f; break; // ×4.0  (phase 4+)
             }
         }
 
         // Pre-seed the field so the invariant holds from frame 0.
-        // At least one pad of frogColor is guaranteed.
+        // At least two pads of frogColor are guaranteed: one for the frog to
+        // ride and one to jump to, so the player always has a valid target.
         public void Initialize(PadColor frogColor)
         {
             _pads.Clear();
@@ -136,12 +137,22 @@ namespace RainbowFroggy.Core
             for (int i = 0; i < InitialPadCount; i++)
             {
                 // i==0 is the frog's starting pad; place it at Y=0 (top) so it
-                // takes the full 8.33 s (at Phase-1 speed 0.12/s) to scroll off.
+                // takes the full 4.17 s (at Phase-1 speed 0.24/s) to scroll off.
                 // Remaining pads are spaced evenly from 0.26 → 0.74.
                 float    y = i == 0 ? 0f : 0.1f + i * (0.8f / InitialPadCount);
                 PadColor c = i == 0 ? frogColor : RandomColor();
                 float    x = RandomX();
                 _pads.Add(new PadData(_nextId++, c, x, y));
+            }
+
+            // Guarantee a second jumpable pad of frogColor.  When all random
+            // pads happen to be a different colour (increasingly likely as the
+            // Phase 1 palette grows), replace pad[1] without disturbing the RNG
+            // stream or any pad IDs — pad[1] keeps its Id, X, and Y.
+            if (CountMatching(frogColor) < 2)
+            {
+                var old = _pads[1];
+                _pads[1] = new PadData(old.Id, frogColor, old.X, old.Y);
             }
         }
 
