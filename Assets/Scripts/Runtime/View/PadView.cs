@@ -10,11 +10,24 @@ namespace RainbowFroggy.View
         public int     PadId   { get; private set; }
         public PadType PadType { get; private set; }
 
+        // Wiggle constants: ±8° amplitude, ~4 s period (2π/4 ≈ 1.5708 rad/s, within the 3–5 s band).
+        private const float WiggleAmplitude = 8f;
+        private const float WiggleFreq      = 1.5708f; // 2π / 4 s
+
         private SpriteRenderer _sr;
+        private float          _wigglePhase;
 
         private void Awake()
         {
-            _sr = GetComponent<SpriteRenderer>();
+            _sr          = GetComponent<SpriteRenderer>();
+            _wigglePhase = Random.Range(0f, Mathf.PI * 2f);
+        }
+
+        private void Update()
+        {
+            transform.localRotation = Quaternion.AngleAxis(
+                Mathf.Sin(Time.time * WiggleFreq + _wigglePhase) * WiggleAmplitude,
+                Vector3.forward);
         }
 
         public void Bind(PadData data)
