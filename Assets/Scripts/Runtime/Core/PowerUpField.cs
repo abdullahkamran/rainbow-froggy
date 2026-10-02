@@ -37,7 +37,7 @@ namespace RainbowFroggy.Core
         // pickups whose host has scrolled off or whose TTL has expired.
         // Fires the spawn timer when it elapses.
         // A dt of 0 is a no-op (used by the cross-tap invariant hack in RainbowFroggyGame).
-        public void Tick(float dt, IReadOnlyList<PadData> pads, PadColor frogColor)
+        public void Tick(float dt, IReadOnlyList<PadData> pads, PadColor frogColor, int phase)
         {
             if (dt == 0f) return;
 
@@ -68,7 +68,7 @@ namespace RainbowFroggy.Core
             if (_spawnTimer <= 0f)
             {
                 _spawnTimer = SpawnInterval;
-                SpawnPickup(pads, frogColor);
+                SpawnPickup(pads, frogColor, phase);
             }
         }
 
@@ -103,27 +103,41 @@ namespace RainbowFroggy.Core
         }
 
         // Spawn one pickup on an eligible lily pad, add it to the list, and return it.
-        // Returns null if the active-pickup cap is reached or no unoccupied Normal pad
-        // is available.  Public so tests can force a spawn deterministically.
+        // Returns null if:
+        //   • phase < 2 (no pickups in Phase 1)
+        //   • the active-pickup cap is reached
+        //   • no unoccupied Normal pad is available
+        //   • the rolled type is gated behind a higher phase (TimeFreeze needs phase >= 3)
         //
         // Placement: picks reward pads (pad.Color == frogColor) with probability
         // RewardPadFraction; picks trick pads (non-matching colour) otherwise.
         // Falls back to the other bucket when the preferred one is empty.
-        public PowerUpData SpawnPickup(IReadOnlyList<PadData> pads, PadColor frogColor)
+        //
+        // Public so tests can force a spawn deterministically.
+        public PowerUpData SpawnPickup(IReadOnlyList<PadData> pads, PadColor frogColor, int phase)
         {
+            // Phase gate: no pickups at all in Phase 1.
+            if (phase < 2) return null;
+
             if (_pickups.Count >= PowerUpPlacement.MaxActivePickups) return null;
 
             // Type is rolled first so a CycleRng(0) still produces TimeFreeze
             // regardless of the pad-selection rolls that follow.
             PowerUpType type = PickType();
 
+            // TimeFreeze is locked until Phase 3.
+            if (type == PowerUpType.TimeFreeze && phase < 3) return null;
+
             // Separate unoccupied Normal pads into reward and trick buckets.
+            // Only Normal pads host pickups; Flaky, Rotten, Lotus, and Rainbow
+            // pads are skipped.
             var rewardPads = new List<PadData>();
             var trickPads  = new List<PadData>();
 
             foreach (var pad in pads)
             {
-                // Only Normal pads host pickups.
+                // Only Normal pads host pickups; Flaky, Rotten, Lotus, and Rainbow
+                // pads are skipped.
                 if (pad.Type != PadType.Normal) continue;
 
                 // Skip pads that already carry a pickup.

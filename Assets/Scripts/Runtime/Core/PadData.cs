@@ -22,6 +22,12 @@ namespace RainbowFroggy.Core
         // Maximum drift speed assigned at spawn; kept for reference.
         public float DriftAmplitude;
 
+        // Flaky-pad countdown state.  All three fields are mutated by RainbowFroggyGame
+        // on landing and each tick; they carry no meaning for other pad types.
+        public bool  FlakeyCountdownActive;
+        public float FlakeyTimeRemaining;
+        public bool  IsBlinking;
+
         public PadData(int id, PadColor color, float x, float y,
                        PadType type = PadType.Normal,
                        float velocityX = 0f, float driftAmplitude = 0f)
@@ -37,7 +43,8 @@ namespace RainbowFroggy.Core
 
         // Returns true if a frog of the given colour may land on this pad.
         // Lotus pads are wildcards and accept every frog colour.
+        // Flaky pads also accept every frog colour unconditionally.
         public bool CanLand(PadColor frogColor) =>
-            Type == PadType.Lotus || Color == frogColor;
+            Type == PadType.Lotus || Type == PadType.Flaky || Color == frogColor;
     }
 }

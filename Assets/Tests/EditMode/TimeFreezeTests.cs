@@ -24,7 +24,7 @@ namespace RainbowFroggy.Tests.EditMode
                 new PadData(0, PadColor.Ruby, 0.2f, 0.3f),  // reward pad (frogColor = Ruby)
                 new PadData(1, PadColor.Cyan, 0.5f, 0.6f),  // trick pad
             };
-            var pickup = field.SpawnPickup(pads, PadColor.Ruby);
+            var pickup = field.SpawnPickup(pads, PadColor.Ruby, 3);
 
             Assert.IsNotNull(pickup, "SpawnPickup must return a non-null PowerUpData");
             Assert.AreEqual(PowerUpType.TimeFreeze, pickup.Type,
