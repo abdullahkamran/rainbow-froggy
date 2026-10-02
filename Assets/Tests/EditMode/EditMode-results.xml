@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="29" result="Passed" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.122068">
+  <test-suite type="TestSuite" id="1000" name="RainbowFroggy" fullname="RainbowFroggy" runstate="Runnable" testcasecount="29" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.122068" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1037" name="RainbowFroggy.Tests.EditMode.dll" fullname="/Users/negan/haytham-intelligence/.worktrees/abdullahkamran__rainbow-froggy__issue-65/Library/ScriptAssemblies/RainbowFroggy.Tests.EditMode.dll" runstate="Runnable" testcasecount="29" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.116574" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="84352" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1038" name="RainbowFroggy" fullname="RainbowFroggy" runstate="Runnable" testcasecount="29" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.116291" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1039" name="Tests" fullname="RainbowFroggy.Tests" runstate="Runnable" testcasecount="29" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.116064" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1040" name="EditMode" fullname="RainbowFroggy.Tests.EditMode" runstate="Runnable" testcasecount="29" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.115801" total="29" passed="29" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1001" name="DifficultyProgressionTests" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.078248" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1003" name="Game_AdvancesToPhase2_WhenScoreReaches51" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Game_AdvancesToPhase2_WhenScoreReaches51" methodname="Game_AdvancesToPhase2_WhenScoreReaches51" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="479569840" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.009938" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1002" name="Game_StaysPhase1_AtScore50" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Game_StaysPhase1_AtScore50" methodname="Game_StaysPhase1_AtScore50" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="22878104" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000143" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1004" name="Phase2_ScrollSpeed_IsScaled1_5x" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Phase2_ScrollSpeed_IsScaled1_5x" methodname="Phase2_ScrollSpeed_IsScaled1_5x" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="1599604784" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000485" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1005" name="Phase2_SpawnsMangoColor" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Phase2_SpawnsMangoColor" methodname="Phase2_SpawnsMangoColor" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="2071770473" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001057" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1008" name="Phase4_DriftPads_StayWithinBounds" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Phase4_DriftPads_StayWithinBounds" methodname="Phase4_DriftPads_StayWithinBounds" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="1086977335" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.056955" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1007" name="Phase4_SpawnsPadsWithNonZeroVelocityX" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.Phase4_SpawnsPadsWithNonZeroVelocityX" methodname="Phase4_SpawnsPadsWithNonZeroVelocityX" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="1044839568" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000235" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1006" name="TapRottenPad_TriggersMisstep" fullname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests.TapRottenPad_TriggersMisstep" methodname="TapRottenPad_TriggersMisstep" classname="RainbowFroggy.Tests.EditMode.DifficultyProgressionTests" runstate="Runnable" seed="1279500699" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001817" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1009" name="LayoutCalibrationTests" fullname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests" classname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.003519" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1010" name="PadView_NormalisedX_MapsToLaneCentres" fullname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests.PadView_NormalisedX_MapsToLaneCentres" methodname="PadView_NormalisedX_MapsToLaneCentres" classname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests" runstate="Runnable" seed="35132073" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.002426" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1011" name="PadView_NormalisedY_MapsToScrollExtents" fullname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests.PadView_NormalisedY_MapsToScrollExtents" methodname="PadView_NormalisedY_MapsToScrollExtents" classname="RainbowFroggy.Tests.EditMode.LayoutCalibrationTests" runstate="Runnable" seed="122519456" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000174" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1012" name="LotusBloomTests" fullname="RainbowFroggy.Tests.EditMode.LotusBloomTests" classname="RainbowFroggy.Tests.EditMode.LotusBloomTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001956" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1013" name="CollectLotusBloom_SpawnsLotusPadAtNormalisedCentre" fullname="RainbowFroggy.Tests.EditMode.LotusBloomTests.CollectLotusBloom_SpawnsLotusPadAtNormalisedCentre" methodname="CollectLotusBloom_SpawnsLotusPadAtNormalisedCentre" classname="RainbowFroggy.Tests.EditMode.LotusBloomTests" runstate="Runnable" seed="2122184773" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000541" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1014" name="LotusBloom_CanLand_ReturnsTrueForAllFrogColors" fullname="RainbowFroggy.Tests.EditMode.LotusBloomTests.LotusBloom_CanLand_ReturnsTrueForAllFrogColors" methodname="LotusBloom_CanLand_ReturnsTrueForAllFrogColors" classname="RainbowFroggy.Tests.EditMode.LotusBloomTests" runstate="Runnable" seed="1455127442" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000229" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1015" name="LotusBloom_OneShotBehavior_RemovedAfterFirstLanding" fullname="RainbowFroggy.Tests.EditMode.LotusBloomTests.LotusBloom_OneShotBehavior_RemovedAfterFirstLanding" methodname="LotusBloom_OneShotBehavior_RemovedAfterFirstLanding" classname="RainbowFroggy.Tests.EditMode.LotusBloomTests" runstate="Runnable" seed="2023144597" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000433" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1016" name="PadFieldInvariantTests" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.026624" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1023" name="Decoys_DoNotViolateInvariant" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.Decoys_DoNotViolateInvariant" methodname="Decoys_DoNotViolateInvariant" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="1114802237" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001177" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1021" name="LateArrival_DoesNotTriggerInPhase1" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.LateArrival_DoesNotTriggerInPhase1" methodname="LateArrival_DoesNotTriggerInPhase1" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="1361362916" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000564" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1022" name="LateArrival_EventuallyResolvesAndSpawns" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.LateArrival_EventuallyResolvesAndSpawns" methodname="LateArrival_EventuallyResolvesAndSpawns" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="11681040" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000560" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1017" name="MatchingPadAlwaysPresent_5000Frames_SeededRun" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.MatchingPadAlwaysPresent_5000Frames_SeededRun" methodname="MatchingPadAlwaysPresent_5000Frames_SeededRun" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="144303219" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.011733" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1018" name="MatchingPadAlwaysPresent_AlternatingColors" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.MatchingPadAlwaysPresent_AlternatingColors" methodname="MatchingPadAlwaysPresent_AlternatingColors" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="1671360025" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.011223" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1020" name="RemovePad_InvariantHolds_AfterEachRemoval" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.RemovePad_InvariantHolds_AfterEachRemoval" methodname="RemovePad_InvariantHolds_AfterEachRemoval" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="976584610" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000315" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1019" name="TapPad_ColorShifts_AndMatchingPadExistsImmediately" fullname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests.TapPad_ColorShifts_AndMatchingPadExistsImmediately" methodname="TapPad_ColorShifts_AndMatchingPadExistsImmediately" classname="RainbowFroggy.Tests.EditMode.PadFieldInvariantTests" runstate="Runnable" seed="1935339066" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000206" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1024" name="PowerUpSpawnWeightTests" fullname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests" classname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001326" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1026" name="LotusBloomWeight_IsStrictlyLessThan_StandardPadWeight" fullname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests.LotusBloomWeight_IsStrictlyLessThan_StandardPadWeight" methodname="LotusBloomWeight_IsStrictlyLessThan_StandardPadWeight" classname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests" runstate="Runnable" seed="131892728" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000138" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1025" name="LotusBloomWeight_IsStrictlyLessThan_TimeFreezeWeight" fullname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests.LotusBloomWeight_IsStrictlyLessThan_TimeFreezeWeight" methodname="LotusBloomWeight_IsStrictlyLessThan_TimeFreezeWeight" classname="RainbowFroggy.Tests.EditMode.PowerUpSpawnWeightTests" runstate="Runnable" seed="1787760916" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000046" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1027" name="ScoringTests" fullname="RainbowFroggy.Tests.EditMode.ScoringTests" classname="RainbowFroggy.Tests.EditMode.ScoringTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001200" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1029" name="ComboMultiplier_ResetsAfterGapOver1Point5Seconds" fullname="RainbowFroggy.Tests.EditMode.ScoringTests.ComboMultiplier_ResetsAfterGapOver1Point5Seconds" methodname="ComboMultiplier_ResetsAfterGapOver1Point5Seconds" classname="RainbowFroggy.Tests.EditMode.ScoringTests" runstate="Runnable" seed="1746441253" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000225" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1030" name="DistanceBonus_AppliedWhenPadYLessThan0Point2" fullname="RainbowFroggy.Tests.EditMode.ScoringTests.DistanceBonus_AppliedWhenPadYLessThan0Point2" methodname="DistanceBonus_AppliedWhenPadYLessThan0Point2" classname="RainbowFroggy.Tests.EditMode.ScoringTests" runstate="Runnable" seed="2038138378" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000118" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1031" name="DistanceBonus_NotAppliedWhenPadYAtLeast0Point2" fullname="RainbowFroggy.Tests.EditMode.ScoringTests.DistanceBonus_NotAppliedWhenPadYAtLeast0Point2" methodname="DistanceBonus_NotAppliedWhenPadYAtLeast0Point2" classname="RainbowFroggy.Tests.EditMode.ScoringTests" runstate="Runnable" seed="73893580" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000103" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1028" name="Score_AccumulatesWithComboMultiplier" fullname="RainbowFroggy.Tests.EditMode.ScoringTests.Score_AccumulatesWithComboMultiplier" methodname="Score_AccumulatesWithComboMultiplier" classname="RainbowFroggy.Tests.EditMode.ScoringTests" runstate="Runnable" seed="1881546616" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000219" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1032" name="TimeFreezeTests" fullname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" classname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.001847" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1034" name="CollectTimeFreeze_SetsActiveAndReducesMultiplier" fullname="RainbowFroggy.Tests.EditMode.TimeFreezeTests.CollectTimeFreeze_SetsActiveAndReducesMultiplier" methodname="CollectTimeFreeze_SetsActiveAndReducesMultiplier" classname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" runstate="Runnable" seed="1067890195" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000125" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1033" name="SpawnPickup_TimeFreezeType_IsNonNullAndWithinBounds" fullname="RainbowFroggy.Tests.EditMode.TimeFreezeTests.SpawnPickup_TimeFreezeType_IsNonNullAndWithinBounds" methodname="SpawnPickup_TimeFreezeType_IsNonNullAndWithinBounds" classname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" runstate="Runnable" seed="563570373" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000785" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1035" name="TimeFreeze_ExpiresAfter5Seconds" fullname="RainbowFroggy.Tests.EditMode.TimeFreezeTests.TimeFreeze_ExpiresAfter5Seconds" methodname="TimeFreeze_ExpiresAfter5Seconds" classname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" runstate="Runnable" seed="1707173696" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000379" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1036" name="TimeFreeze_ZeroDtTick_DoesNotDecrementTimer" fullname="RainbowFroggy.Tests.EditMode.TimeFreezeTests.TimeFreeze_ZeroDtTick_DoesNotDecrementTimer" methodname="TimeFreeze_ZeroDtTick_DoesNotDecrementTimer" classname="RainbowFroggy.Tests.EditMode.TimeFreezeTests" runstate="Runnable" seed="256803781" result="Passed" start-time="2026-10-02 17:44:54Z" end-time="2026-10-02 17:44:54Z" duration="0.000090" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
