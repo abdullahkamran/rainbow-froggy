@@ -68,9 +68,9 @@ namespace RainbowFroggy.View
 
         public void SyncPosition(PadData data)
         {
-            // Play-area world space: x in [-3.5, 3.5], y in [5, -5] (top to bottom).
-            float wx = Mathf.Lerp(-3.5f, 3.5f, data.X);
-            float wy = Mathf.LerpUnclamped(5f, -5f, data.Y);
+            // Play-area world space: x in [-5, 5], y in [8.5, -8.5] (top to bottom).
+            float wx = Mathf.Lerp(-5f, 5f, data.X);
+            float wy = Mathf.LerpUnclamped(8.5f, -8.5f, data.Y);
             transform.localPosition = new Vector3(wx, wy, 0f);
         }
     }
