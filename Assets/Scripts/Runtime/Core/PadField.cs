@@ -22,7 +22,7 @@ namespace RainbowFroggy.Core
         public const int RainbowPadInterval = 8;
 
         // Base scroll speed for Phase 1; scaled by SetPhase.
-        private float _scrollSpeed = 0.24f;
+        private float _scrollSpeed = 0.18f;
 
         // Multiplier applied on top of the base scroll speed (1.0 = normal).
         // Power-ups write this to slow or speed the river without changing the
@@ -95,7 +95,7 @@ namespace RainbowFroggy.Core
             _lateArrivalPending    = false;
             _lateArrivalTimer      = 0f;
             _phase                 = 0;
-            _scrollSpeed           = 0.24f;
+            _scrollSpeed           = 0.18f;
             _scrollSpeedMultiplier = 1.0f;
             _activePalette         = PhaseColors.Phase1;
             _rottenEnabled         = false;
@@ -119,7 +119,7 @@ namespace RainbowFroggy.Core
 
             switch (phase)
             {
-                case 1:  _scrollSpeed = 0.24f; break; // ×1.0
+                case 1:  _scrollSpeed = 0.18f; break; // ×1.0
                 case 2:  _scrollSpeed = 0.36f; break; // ×1.5
                 case 3:  _scrollSpeed = 0.60f; break; // ×2.5
                 default: _scrollSpeed = 0.96f; break; // ×4.0  (phase 4+)
