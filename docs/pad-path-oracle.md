@@ -39,6 +39,8 @@ HasGuaranteedPath(IReadOnlyList<PadData> pads, PadColor frogColor, int frogPadId
 
 Called after every removal and after every burst spawn event in `PadField`.  If it returns `false` a Normal pad of the frog's colour is force-spawned at the top of the field.
 
+**Clearance-skip interaction:** `PadField.SpawnPad` now enforces a `MinLaneClearance` rule that may skip all three lanes and produce no spawn.  After such a skip `HasGuaranteedPath` is checked; if it returns `false` a pad is still placed in the lane with the most existing clearance, overriding the block.  The oracle therefore remains the arbiter of "must-spawn" even when lane density is high.
+
 ---
 
 > **Update this file and `IsValidForFrog` whenever a new `PadType` is added.**

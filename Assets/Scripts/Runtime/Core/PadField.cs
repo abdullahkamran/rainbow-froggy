@@ -95,6 +95,12 @@ namespace RainbowFroggy.Core
         // have scrolled fully past the bottom edge (Y >= 1 + OffscreenMargin).
         private const float OffscreenMargin = 0.25f;
 
+        // Minimum normalised Y distance between an existing pad and the spawn
+        // point (Y = −OffscreenMargin) required before a new pad may be placed
+        // in the same lane.  Burst spawns and guaranteed-path spawns both
+        // respect this constraint; the oracle-driven override (AC4) may bypass it.
+        public const float MinLaneClearance = 0.12f;
+
         // Countdown timer for the rotten-pad guarantee (Phase 3+).
         private float _rottenSpawnTimer;
 
@@ -158,15 +164,25 @@ namespace RainbowFroggy.Core
             _pads.Clear();
             _nextId = 0;
 
+            // AC7: a separate, non-seeded System.Random supplies the initial Y
+            // offsets so they differ on every run ('random' criterion).  Using a
+            // private local here — rather than _rng — leaves the _rng draw
+            // sequence (colour/X) completely untouched, preserving seeded-test
+            // reproducibility (AC8).
+            var initOffsetRng = new System.Random();
+
             for (int i = 0; i < InitialPadCount; i++)
             {
                 // Pad 0 sits at the very top (Y=0) so it gives the frog maximum
                 // scroll-time before falling off.  The remaining pads fill Y=0.2–0.9
                 // in equal steps, giving the player visible targets immediately.
-                float    y = i == 0 ? 0f : 0.1f + i * (0.8f / InitialPadCount);
-                PadColor c = i < 3 ? frogColor : RandomColor();
-                float    x = RandomX();
-                _pads.Add(new PadData(_nextId++, c, x, y));
+                float    baseY   = i == 0 ? 0f : 0.1f + i * (0.8f / InitialPadCount);
+                PadColor c       = i < 3 ? frogColor : RandomColor();
+                float    x       = RandomX();
+                // AC7: small random Y offset in (−0.04, +0.04) so pads are not
+                // all at exactly their evenly-spaced baseline Y values.
+                float    yOffset = (float)(initOffsetRng.NextDouble() * 0.08 - 0.04);
+                _pads.Add(new PadData(_nextId++, c, x, baseY + yOffset));
             }
         }
 
@@ -219,7 +235,9 @@ namespace RainbowFroggy.Core
                     break;
                 }
             }
-            if (!pathAfterRemoval) SpawnPad(frogColor);
+            // Pass `removed` so the internal oracle check does not count pads
+            // that are about to be deleted as a valid path (AC4 correctness).
+            if (!pathAfterRemoval) SpawnPad(frogColor, removed);
 
             foreach (var pad in removed)
                 _pads.Remove(pad);
@@ -247,19 +265,30 @@ namespace RainbowFroggy.Core
 
                 for (int i = 0; i < laneCount; i++)
                 {
-                    float    x = 0.2f + laneIdx[i] * 0.3f;
-                    PadColor c = PickSpawnColor(frogColor);
-                    SpawnPad(c, x);
+                    float x = 0.2f + laneIdx[i] * 0.3f;
+                    // AC2: skip this lane if an existing pad is within MinLaneClearance
+                    // of the spawn point; neither a colour draw nor a Y-offset draw
+                    // is consumed for a skipped lane (AC6).
+                    if (!LaneIsClear(x)) continue;
+                    // Colour is drawn first to preserve the pre-AC7/AC8 RNG sequence
+                    // for seeded tests (AC8).  The Y offset is drawn after so neither
+                    // call shifts the other's RNG position relative to the original.
+                    // AC5/6: each pad gets its own independent draw — never shared.
+                    PadColor c       = PickSpawnColor(frogColor);
+                    float    yOffset = RandomSpawnYOffset();
+                    SpawnPad(c, x, yOffset: yOffset);
                 }
 
                 // Optional flaky pad spawned alongside the burst (Phase 2+).
+                // AC5: the flaky pad is part of the burst event and receives its
+                // own independent Y offset, drawn separately from the burst pads.
                 if (_phase >= 2)
                 {
                     int flakyChance = _phase >= 3 ? FlakySpawnChancePhase3Plus : FlakySpawnChancePhase2;
                     if (_rng.Next(0, 100) < flakyChance)
                     {
                         _pads.Add(new PadData(_nextId++, frogColor, RandomX(),
-                                              -OffscreenMargin, PadType.Flaky));
+                                              -OffscreenMargin + RandomSpawnYOffset(), PadType.Flaky));
                     }
                 }
 
@@ -305,7 +334,9 @@ namespace RainbowFroggy.Core
                     break;
                 }
             }
-            if (!hasPath) SpawnPad(frogColor);
+            // Pass target as ignored so the internal oracle check does not count
+            // the pad being removed as a valid path (AC4 correctness).
+            if (!hasPath) SpawnPad(frogColor, new List<PadData> { target });
 
             _pads.Remove(target);
         }
@@ -370,17 +401,102 @@ namespace RainbowFroggy.Core
             return _rng.Next(0, 100) < bias ? frogColor : RandomColor();
         }
 
-        // Spawn at a random lane; used for guaranteed-path force-spawns.
-        // Always produces PadType.Normal so the spawn definitively satisfies
-        // PadPathOracle.IsValidForFrog — a Rotten pad would leave the invariant
-        // broken even after the force-spawn fires.
-        private void SpawnPad(PadColor color) => SpawnPad(color, RandomX(), forceNormal: true);
+        // ---- Lane-clearance helpers (AC1–4) --------------------------------
+
+        // Half the pitch between lane centres; pads assigned to a lane may have
+        // drifted up to this far from their origin while still belonging to it.
+        private const float LaneTolerance = 0.15f;
+
+        // Distance between the spawn point (Y = −OffscreenMargin) and the nearest
+        // existing pad whose lane X is within LaneTolerance of x.
+        // Returns float.MaxValue when no pad occupies that lane.
+        private float NearestPadDistanceInLane(float x)
+        {
+            float spawnY  = -OffscreenMargin;
+            float minDist = float.MaxValue;
+            foreach (var pad in _pads)
+            {
+                float dx = pad.X - x;
+                if (dx < 0f) dx = -dx;
+                if (dx < LaneTolerance)
+                {
+                    float dy = pad.Y - spawnY;
+                    if (dy < 0f) dy = -dy;
+                    if (dy < minDist) minDist = dy;
+                }
+            }
+            return minDist;
+        }
+
+        // Returns true when no existing pad is within MinLaneClearance of the
+        // spawn point in this lane.
+        private bool LaneIsClear(float x) => NearestPadDistanceInLane(x) >= MinLaneClearance;
+
+        // Returns the lane X (0.2, 0.5, or 0.8) whose nearest existing pad is
+        // furthest from the spawn point.  Used as the override target when all
+        // lanes are blocked by the clearance rule but the oracle demands a spawn.
+        private float BestClearanceLaneX()
+        {
+            float d0 = NearestPadDistanceInLane(0.2f);
+            float d1 = NearestPadDistanceInLane(0.5f);
+            float d2 = NearestPadDistanceInLane(0.8f);
+            if (d0 >= d1 && d0 >= d2) return 0.2f;
+            if (d1 >= d2)              return 0.5f;
+            return 0.8f;
+        }
+
+        // Returns a random Y offset in [−0.08, 0] for burst-spawned pads (AC5/6).
+        // Callers must invoke this once per pad — never share a single call across
+        // multiple pads in the same burst event.
+        private float RandomSpawnYOffset() => -(_rng.Next(0, 8001) * 0.00001f);
+
+        // ---- Spawn helpers --------------------------------------------------
+
+        // Guaranteed-path force-spawn: picks a lane that satisfies MinLaneClearance,
+        // places a Normal pad there, then checks the oracle.  If all lanes are blocked
+        // no pad is spawned (AC3).  After the attempt, if the oracle still reports no
+        // valid path — because skipping left none (AC4) — a pad is force-spawned in
+        // the lane with the most clearance, overriding the block.
+        //
+        // ignored: pads excluded from the oracle check so that about-to-be-removed
+        // pads (Tick step 3, RemovePad) are not counted as a surviving valid path.
+        private void SpawnPad(PadColor color, List<PadData> ignored = null)
+        {
+            // Collect clear lanes (AC2).
+            int     clearCount = 0;
+            float[] clearLanes = new float[3];
+            if (LaneIsClear(0.2f)) clearLanes[clearCount++] = 0.2f;
+            if (LaneIsClear(0.5f)) clearLanes[clearCount++] = 0.5f;
+            if (LaneIsClear(0.8f)) clearLanes[clearCount++] = 0.8f;
+
+            if (clearCount > 0)
+            {
+                // Pick one clear lane at random and spawn (AC2).
+                float chosenX = clearLanes[_rng.Next(0, clearCount)];
+                SpawnPad(color, chosenX, forceNormal: true);
+            }
+            // else: every lane is blocked — no spawn this event (AC3).
+
+            // AC4: if no guaranteed path exists after the (possibly skipped) spawn,
+            // force-spawn in the lane with the most clearance, overriding the block.
+            bool hasPath = false;
+            foreach (var p in _pads)
+            {
+                if (ignored != null && ignored.Contains(p)) continue;
+                if (PadPathOracle.IsValidForFrog(p, color, -1)) { hasPath = true; break; }
+            }
+            if (!hasPath)
+                SpawnPad(color, BestClearanceLaneX(), forceNormal: true);
+        }
 
         // Core spawn helper: places one pad at the given normalised x.
         // Rotten type is applied probabilistically in Phase 3+ UNLESS forceNormal
         // is true (set by guaranteed-path enforcement paths).  Drift is applied in
         // Phase 4+ regardless of forceNormal.
-        private void SpawnPad(PadColor color, float x, bool forceNormal = false)
+        // yOffset is added to −OffscreenMargin at construction (AC5); the value is
+        // never subsequently modified — pads scroll at the same speed so relative
+        // stagger within a burst is preserved throughout the pad's lifetime.
+        private void SpawnPad(PadColor color, float x, bool forceNormal = false, float yOffset = 0f)
         {
             PadType type = (!forceNormal && _rottenEnabled && _rng.Next(0, 5) == 0)
                 ? PadType.Rotten
@@ -394,7 +510,7 @@ namespace RainbowFroggy.Core
                 vx = _rng.Next(0, 2) == 0 ? da : -da;
             }
 
-            _pads.Add(new PadData(_nextId++, color, x, -OffscreenMargin, type, vx, da));
+            _pads.Add(new PadData(_nextId++, color, x, -OffscreenMargin + yOffset, type, vx, da));
         }
 
         // Count rotten pads whose colour matches the frog (i.e. visible traps).
