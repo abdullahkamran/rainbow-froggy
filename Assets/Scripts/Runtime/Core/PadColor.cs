@@ -21,6 +21,7 @@ namespace RainbowFroggy.Core
         Rotten  = 1,
         Rainbow = 2,   // white/shimmer pad; any frog colour can land on it
         Lotus   = 3,   // wildcard pad that accepts every frog colour; removed after one landing
+        Flaky   = 4,   // time-bomb pad; starts a countdown when the frog lands on it
     }
 
     public static class PhaseColors

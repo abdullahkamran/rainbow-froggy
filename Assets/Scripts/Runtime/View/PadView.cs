@@ -14,12 +14,20 @@ namespace RainbowFroggy.View
         private const float WiggleAmplitude = 8f;
         private const float WiggleFreq      = 1.5708f; // 2π / 4 s
 
-        // Lily pad base is always solid green; the flower carries the pad's effective colour.
+        // Lily pad base colour for Normal pads.
         private static readonly Color LilyPadGreen = new Color(0.18f, 0.60f, 0.18f);
+
+        // Warm/golden tint applied to Flaky pads so they are visually distinct
+        // from the standard green base without requiring new art assets.
+        private static readonly Color FlakyGold = new Color(0.95f, 0.75f, 0.25f);
 
         private SpriteRenderer _sr;
         private SpriteRenderer _flowerSr;
         private float          _wigglePhase;
+
+        // Cached reference to the bound PadData; updated on every Bind call so
+        // SyncFlaky can read IsBlinking each frame without a separate argument.
+        private PadData _data;
 
         private void Awake()
         {
@@ -54,15 +62,31 @@ namespace RainbowFroggy.View
             transform.localRotation = Quaternion.AngleAxis(
                 Mathf.Sin(Time.time * WiggleFreq + _wigglePhase) * WiggleAmplitude,
                 Vector3.forward);
+
+            SyncFlaky();
         }
 
         public void Bind(PadData data)
         {
+            _data   = data;
             PadId   = data.Id;
             PadType = data.Type;
             EnsureRefs();
-            _sr.color       = LilyPadGreen;
-            _flowerSr.color = ColorPalette.For(data.Color);
+
+            if (data.Type == PadType.Flaky)
+            {
+                // Flaky pads use a warm/golden base and hide the flower so the
+                // player can distinguish them from normal pads at a glance.
+                _sr.color         = FlakyGold;
+                _flowerSr.enabled = false;
+            }
+            else
+            {
+                _sr.color         = LilyPadGreen;
+                _flowerSr.enabled = true;
+                _flowerSr.color   = ColorPalette.For(data.Color);
+            }
+
             SyncPosition(data);
         }
 
@@ -72,6 +96,16 @@ namespace RainbowFroggy.View
             float wx = Mathf.Lerp(-5f, 5f, data.X);
             float wy = Mathf.LerpUnclamped(8.5f, -8.5f, data.Y);
             transform.localPosition = new Vector3(wx, wy, 0f);
+        }
+
+        // Drive alpha oscillation when the flaky countdown is near expiry.
+        // Oscillates between 0.4 and 1.0 at ~4 Hz to warn the player.
+        private void SyncFlaky()
+        {
+            if (_data == null || _data.Type != PadType.Flaky || !_data.IsBlinking) return;
+            Color c = _sr.color;
+            c.a     = Mathf.Lerp(0.4f, 1.0f, (Mathf.Sin(Time.time * 8f * Mathf.PI) + 1f) * 0.5f);
+            _sr.color = c;
         }
     }
 }

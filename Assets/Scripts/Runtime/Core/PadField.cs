@@ -6,20 +6,43 @@ namespace RainbowFroggy.Core
     //
     // Guaranteed-path rule (PRD §2.1 Phase 1):
     //   At every tick there must be at least one visible pad whose colour
-    //   matches the frog's current colour.  The rule is enforced by:
-    //     1. Before removing a pad that would leave zero matching pads,
+    //   matches the frog's current colour (or an equivalent oracle-valid pad).
+    //   The rule is enforced by:
+    //     1. Before removing a pad that would leave zero oracle-valid pads,
     //        immediately spawn a replacement at the top.
-    //     2. Whenever the periodic spawn fires with zero matching pads
-    //        on screen, force the new pad's colour to the frog's colour.
+    //     2. After each burst spawn, PadPathOracle.HasGuaranteedPath is checked;
+    //        if it returns false, one additional frog-colour pad is force-spawned.
     public sealed class PadField
     {
-        public const float SpawnInterval      = 1.8f;
-        public const int   InitialPadCount   = 5;
+        // How many pads are pre-seeded when a run begins.  At least three of
+        // these will match the frog's colour so the player always has a target.
+        public const int InitialPadCount = 8;
 
-        // Every this-many scheduled-spawn timer fires, a Rainbow Pad is added
-        // alongside the regular pad.  Counter-gated (no RNG call) so existing
-        // seeded tests see an identical random stream.
-        public const int RainbowPadInterval = 8;
+        // Per-phase spawn configuration: interval range and simultaneous-lane cap.
+        public readonly struct SpawnConfig
+        {
+            public readonly float MinInterval;
+            public readonly float MaxInterval;
+            public readonly int   MaxSimultaneousLanes;
+
+            public SpawnConfig(float min, float max, int maxLanes)
+            {
+                MinInterval          = min;
+                MaxInterval          = max;
+                MaxSimultaneousLanes = maxLanes;
+            }
+        }
+
+        // Phase-dependent frog-colour bias: probability (0–100) that a burst-
+        // spawned pad matches the frog's colour.
+        private const int FrogBiasPhase1 = 60;
+        private const int FrogBiasPhase2 = 45;
+        private const int FrogBiasPhase3 = 30;
+        private const int FrogBiasPhase4 = 20;
+
+        // Phase-dependent flaky-pad spawn chances (applied per burst event).
+        private const int FlakySpawnChancePhase2    = 15; // ~15 % in Phase 2
+        private const int FlakySpawnChancePhase3Plus = 25; // ~25 % in Phase 3+
 
         // Base scroll speed for Phase 1; scaled by SetPhase.
         private float _scrollSpeed = 0.18f;
@@ -48,19 +71,16 @@ namespace RainbowFroggy.Core
         // Drift speed assigned to Phase-4 pads (normalised units/second).
         private const float DriftSpeed = 0.15f;
 
-        private int   _phase;
-        private bool  _lateArrivalPending;
-        private float _lateArrivalTimer;
+        private int _phase;
+
+        private SpawnConfig _spawnConfig;
 
         private readonly List<PadData> _pads = new List<PadData>();
         private readonly IRng          _rng;
         private int   _nextId;
         private float _spawnTimer;
 
-        // Counts scheduled-spawn timer fires since the last Rainbow Pad was spawned.
-        private int _spawnsSinceRainbow;
-
-        public IReadOnlyList<PadData> Pads     => _pads;
+        public IReadOnlyList<PadData> Pads => _pads;
 
         // Exposed for tests and diagnostics.
         public float ScrollSpeed => _scrollSpeed;
@@ -78,10 +98,14 @@ namespace RainbowFroggy.Core
         // Countdown timer for the rotten-pad guarantee (Phase 3+).
         private float _rottenSpawnTimer;
 
+        // Default spawn config matches Phase 1 settings.
+        private static readonly SpawnConfig DefaultSpawnConfig = new SpawnConfig(0.8f, 1.8f, 3);
+
         public PadField(IRng rng)
         {
-            _rng        = rng;
-            _spawnTimer = SpawnInterval;
+            _rng         = rng;
+            _spawnConfig = DefaultSpawnConfig;
+            _spawnTimer  = DefaultSpawnConfig.MaxInterval;
         }
 
         // Reset all mutable state back to phase-1 defaults so the field can be
@@ -91,9 +115,8 @@ namespace RainbowFroggy.Core
         {
             _pads.Clear();
             _nextId                = 0;
-            _spawnTimer            = SpawnInterval;
-            _lateArrivalPending    = false;
-            _lateArrivalTimer      = 0f;
+            _spawnConfig           = DefaultSpawnConfig;
+            _spawnTimer            = DefaultSpawnConfig.MaxInterval;
             _phase                 = 0;
             _scrollSpeed           = 0.18f;
             _scrollSpeedMultiplier = 1.0f;
@@ -101,14 +124,14 @@ namespace RainbowFroggy.Core
             _rottenEnabled         = false;
             _driftEnabled          = false;
             _rottenSpawnTimer      = 0f;
-            _spawnsSinceRainbow    = 0;
         }
 
-        // Apply a phase transition: update scroll speed, active palette, and
-        // special-pad flags.  Takes effect for all pads spawned after this call.
+        // Apply a phase transition: update scroll speed, active palette, spawn config,
+        // and special-pad flags.  Takes effect for all pads spawned after this call.
         public void SetPhase(int phase)
         {
             _phase         = phase;
+            _spawnConfig   = SpawnConfigForPhase(phase);
             _activePalette = PhaseColors.ForPhase(phase);
             _rottenEnabled = phase >= 3;
             _driftEnabled  = phase >= 4;
@@ -127,8 +150,9 @@ namespace RainbowFroggy.Core
         }
 
         // Pre-seed the field so the invariant holds from frame 0.
-        // At least two pads of frogColor are guaranteed: one for the frog to
-        // ride and one to jump to, so the player always has a valid target.
+        // Pads 0–2 are always the frog's colour; the rest are random.
+        // At least 3 matching pads are guaranteed so the player always has
+        // both a starting pad and a visible jump target.
         public void Initialize(PadColor frogColor)
         {
             _pads.Clear();
@@ -136,23 +160,13 @@ namespace RainbowFroggy.Core
 
             for (int i = 0; i < InitialPadCount; i++)
             {
-                // i==0 is the frog's starting pad; place it at Y=0 (top) so it
-                // takes the full 4.17 s (at Phase-1 speed 0.24/s) to scroll off.
-                // Remaining pads are spaced evenly from 0.26 → 0.74.
+                // Pad 0 sits at the very top (Y=0) so it gives the frog maximum
+                // scroll-time before falling off.  The remaining pads fill Y=0.2–0.9
+                // in equal steps, giving the player visible targets immediately.
                 float    y = i == 0 ? 0f : 0.1f + i * (0.8f / InitialPadCount);
-                PadColor c = i == 0 ? frogColor : RandomColor();
+                PadColor c = i < 3 ? frogColor : RandomColor();
                 float    x = RandomX();
                 _pads.Add(new PadData(_nextId++, c, x, y));
-            }
-
-            // Guarantee a second jumpable pad of frogColor.  When all random
-            // pads happen to be a different colour (increasingly likely as the
-            // Phase 1 palette grows), replace pad[1] without disturbing the RNG
-            // stream or any pad IDs — pad[1] keeps its Id, X, and Y.
-            if (CountMatching(frogColor) < 2)
-            {
-                var old = _pads[1];
-                _pads[1] = new PadData(old.Id, frogColor, old.X, old.Y);
             }
         }
 
@@ -164,11 +178,8 @@ namespace RainbowFroggy.Core
         {
             // 0. Eagerly enforce invariant at the start of each tick so that any
             //    colour change between ticks is covered immediately.
-            if (CountMatching(frogColor) == 0)
-            {
+            if (!PadPathOracle.HasGuaranteedPath(_pads, frogColor, -1))
                 SpawnPad(frogColor);
-                SpawnDecoys(frogColor, _pads[_pads.Count - 1].X);
-            }
 
             // 1. Scroll all pads down; apply horizontal drift for Phase-4 pads.
             foreach (var pad in _pads)
@@ -180,12 +191,12 @@ namespace RainbowFroggy.Core
                     pad.X += pad.VelocityX * dt;
                     if (pad.X <= 0.05f)
                     {
-                        pad.X        = 0.05f;
+                        pad.X         = 0.05f;
                         pad.VelocityX = -pad.VelocityX;
                     }
                     else if (pad.X >= 0.95f)
                     {
-                        pad.X        = 0.95f;
+                        pad.X         = 0.95f;
                         pad.VelocityX = -pad.VelocityX;
                     }
                 }
@@ -197,57 +208,69 @@ namespace RainbowFroggy.Core
                 if (pad.Y >= 1.0f + OffscreenMargin)
                     removed.Add(pad);
 
-            // 3. Guaranteed-path check: ensure at least one matching pad will
+            // 3. Guaranteed-path check: ensure at least one oracle-valid pad will
             //    survive after ALL off-screen pads are removed this tick.
-            if (CountMatchingExcluding(frogColor, removed) == 0)
-                SpawnPad(frogColor);
+            bool pathAfterRemoval = false;
+            foreach (var p in _pads)
+            {
+                if (!removed.Contains(p) && PadPathOracle.IsValidForFrog(p, frogColor, -1))
+                {
+                    pathAfterRemoval = true;
+                    break;
+                }
+            }
+            if (!pathAfterRemoval) SpawnPad(frogColor);
 
             foreach (var pad in removed)
                 _pads.Remove(pad);
 
-            // 4. Scheduled spawn (phase 2+: 25 % chance of a 1–2 s late arrival).
+            // 4. Burst spawn: roll a random interval and lane count, then spawn one
+            //    pad per chosen lane.  Intervals are computed in tenths of a second
+            //    so integer RNG can cover the full [min, max] range precisely.
             _spawnTimer -= dt;
             if (_spawnTimer <= 0f)
             {
-                _spawnTimer = SpawnInterval;
-                if (_phase >= 2 && _rng.Next(0, 4) == 0)
+                int minT = (int)(_spawnConfig.MinInterval * 10f + 0.5f);
+                int maxT = (int)(_spawnConfig.MaxInterval * 10f + 0.5f);
+                _spawnTimer = _rng.Next(minT, maxT + 1) * 0.1f;
+
+                int laneCount = _rng.Next(1, _spawnConfig.MaxSimultaneousLanes + 1);
+
+                // Fisher-Yates partial shuffle: select laneCount distinct lane indices
+                // from the three available lanes (0 → x=0.2, 1 → x=0.5, 2 → x=0.8).
+                int[] laneIdx = { 0, 1, 2 };
+                for (int i = 0; i < laneCount; i++)
                 {
-                    _lateArrivalPending = true;
-                    _lateArrivalTimer   = _rng.Next(10, 21) * 0.1f;
-                }
-                else
-                {
-                    PadColor c = CountMatching(frogColor) == 0 ? frogColor : RandomColor();
-                    SpawnPad(c);
+                    int j   = i + _rng.Next(0, 3 - i);
+                    int tmp = laneIdx[i]; laneIdx[i] = laneIdx[j]; laneIdx[j] = tmp;
                 }
 
-                // Occasionally add a Rainbow Pad alongside the regular scheduled pad.
-                // Counter-gated (no RNG draw) to keep the seeded test stream intact.
-                _spawnsSinceRainbow++;
-                if (_spawnsSinceRainbow >= RainbowPadInterval)
+                for (int i = 0; i < laneCount; i++)
                 {
-                    _spawnsSinceRainbow = 0;
-                    // Centre lane — no RNG needed.
-                    _pads.Add(new PadData(_nextId++, PadColor.Rainbow, 0.5f, -OffscreenMargin,
-                                          PadType.Rainbow));
+                    float    x = 0.2f + laneIdx[i] * 0.3f;
+                    PadColor c = PickSpawnColor(frogColor);
+                    SpawnPad(c, x);
                 }
-            }
 
-            // 5. Resolve any pending late arrival.
-            if (_lateArrivalPending)
-            {
-                _lateArrivalTimer -= dt;
-                if (_lateArrivalTimer <= 0f)
+                // Optional flaky pad spawned alongside the burst (Phase 2+).
+                if (_phase >= 2)
                 {
-                    _lateArrivalPending = false;
+                    int flakyChance = _phase >= 3 ? FlakySpawnChancePhase3Plus : FlakySpawnChancePhase2;
+                    if (_rng.Next(0, 100) < flakyChance)
+                    {
+                        _pads.Add(new PadData(_nextId++, frogColor, RandomX(),
+                                              -OffscreenMargin, PadType.Flaky));
+                    }
+                }
+
+                // Post-burst path guarantee: if no oracle-valid pad is currently
+                // visible, force-spawn one of the frog's colour.
+                if (!PadPathOracle.HasGuaranteedPath(_pads, frogColor, -1))
                     SpawnPad(frogColor);
-                    SpawnDecoys(frogColor, _pads[_pads.Count - 1].X);
-                }
             }
 
-            // 6. Phase 3+: guarantee a rotten trap of the frog's colour is visible
-            //    within RottenSpawnInterval seconds.  This fires independently of the
-            //    regular spawn timer so it survives late-arrival delays.
+            // 5. Phase 3+: guarantee a rotten trap of the frog's colour is visible
+            //    within RottenSpawnInterval seconds.
             if (_rottenEnabled)
             {
                 _rottenSpawnTimer -= dt;
@@ -272,23 +295,34 @@ namespace RainbowFroggy.Core
 
             if (target == null) return;
 
-            int matchingAfter = CountMatching(frogColor, excluding: target);
-            if (matchingAfter == 0)
-                SpawnPad(frogColor);
+            // Guaranteed-path check: ensure a valid path survives the removal.
+            bool hasPath = false;
+            foreach (var p in _pads)
+            {
+                if (p != target && PadPathOracle.IsValidForFrog(p, frogColor, -1))
+                {
+                    hasPath = true;
+                    break;
+                }
+            }
+            if (!hasPath) SpawnPad(frogColor);
 
             _pads.Remove(target);
         }
 
+        // Returns the count of pads that the oracle considers valid destinations
+        // for a frog of the given colour (frogPadId = -1: no active-flaky exclusion).
+        // Used by tests and by the guaranteed-path assertion in RainbowFroggyGame.
         public int CountMatching(PadColor color)
         {
             int n = 0;
             foreach (var pad in _pads)
-                if (pad.Color == color && pad.Type != PadType.Lotus) n++;
+                if (PadPathOracle.IsValidForFrog(pad, color, -1)) n++;
             return n;
         }
 
-        // Test seam: inject a Rainbow Pad at an arbitrary position without
-        // waiting for the periodic counter.  Never call from production code.
+        // Test seam: inject a Rainbow Pad at an arbitrary position.
+        // Never call from production code.
         public void AddRainbowPadForTest(float x = 0.5f, float y = 0.3f)
         {
             _pads.Add(new PadData(_nextId++, PadColor.Rainbow, x, y, PadType.Rainbow));
@@ -296,7 +330,7 @@ namespace RainbowFroggy.Core
 
         // Spawn a Lotus pad at the normalised centre of the play area (x=0.5, y=0.5).
         // Lotus pads are wildcards: PadData.CanLand returns true for every PadColor.
-        // They are intentionally excluded from CountMatching so they do not satisfy
+        // They are intentionally excluded from the oracle so they do not satisfy
         // the guaranteed-path invariant (a one-shot wild cannot be the sole safe target).
         // Returns the new pad's id.
         public int SpawnLotusPad()
@@ -308,25 +342,47 @@ namespace RainbowFroggy.Core
 
         // ------------------------------------------------------------------ //
 
-        private int CountMatching(PadColor color, PadData excluding)
+        // Returns the per-phase spawn configuration.
+        private static SpawnConfig SpawnConfigForPhase(int phase)
         {
-            int n = 0;
-            foreach (var pad in _pads)
-                if (pad.Color == color && pad.Type != PadType.Lotus && pad != excluding) n++;
-            return n;
+            switch (phase)
+            {
+                case 1:  return new SpawnConfig(0.8f, 1.8f, 3); // 1–3 lanes
+                case 2:  return new SpawnConfig(1.2f, 2.5f, 2); // 1–2 lanes
+                case 3:  return new SpawnConfig(0.8f, 3.5f, 3); // 1–3 lanes
+                default: return new SpawnConfig(0.5f, 4.0f, 3); // phase 4+
+            }
         }
 
-        private int CountMatchingExcluding(PadColor color, List<PadData> excluding)
+        // Returns the frog's colour with phase-dependent probability, or a
+        // random palette colour otherwise.  Keeps the field biased toward
+        // playable pads in early phases without completely removing challenge.
+        private PadColor PickSpawnColor(PadColor frogColor)
         {
-            int n = 0;
-            foreach (var pad in _pads)
-                if (pad.Color == color && pad.Type != PadType.Lotus && !excluding.Contains(pad)) n++;
-            return n;
+            int bias;
+            switch (_phase)
+            {
+                case 2:  bias = FrogBiasPhase2; break;
+                case 3:  bias = FrogBiasPhase3; break;
+                case 4:  bias = FrogBiasPhase4; break;
+                default: bias = FrogBiasPhase1; break; // phase 0 or 1
+            }
+            return _rng.Next(0, 100) < bias ? frogColor : RandomColor();
         }
 
-        private void SpawnPad(PadColor color)
+        // Spawn at a random lane; used for guaranteed-path force-spawns.
+        // Always produces PadType.Normal so the spawn definitively satisfies
+        // PadPathOracle.IsValidForFrog — a Rotten pad would leave the invariant
+        // broken even after the force-spawn fires.
+        private void SpawnPad(PadColor color) => SpawnPad(color, RandomX(), forceNormal: true);
+
+        // Core spawn helper: places one pad at the given normalised x.
+        // Rotten type is applied probabilistically in Phase 3+ UNLESS forceNormal
+        // is true (set by guaranteed-path enforcement paths).  Drift is applied in
+        // Phase 4+ regardless of forceNormal.
+        private void SpawnPad(PadColor color, float x, bool forceNormal = false)
         {
-            PadType type = _rottenEnabled && _rng.Next(0, 5) == 0
+            PadType type = (!forceNormal && _rottenEnabled && _rng.Next(0, 5) == 0)
                 ? PadType.Rotten
                 : PadType.Normal;
 
@@ -338,45 +394,7 @@ namespace RainbowFroggy.Core
                 vx = _rng.Next(0, 2) == 0 ? da : -da;
             }
 
-            _pads.Add(new PadData(_nextId++, color, RandomX(), -OffscreenMargin, type, vx, da));
-        }
-
-        // Phase 2+: after an invariant-enforcement spawn or late-arrival spawn,
-        // probabilistically place 1–2 distractor pads in adjacent lanes.
-        // 40% chance of 1 decoy, 20% chance of 2 decoys, 40% none.
-        private void SpawnDecoys(PadColor frogColor, float guaranteedX)
-        {
-            if (_phase < 2) return;
-
-            int roll = _rng.Next(0, 5);
-            int decoyCount = (roll == 0 || roll == 1) ? 1 : roll == 2 ? 2 : 0;
-
-            if (decoyCount == 0) return;
-
-            float[] allLanes = new float[] { 0.2f, 0.5f, 0.8f };
-            var availableLanes = new List<float>();
-            foreach (var lane in allLanes)
-            {
-                if (System.Math.Abs(lane - guaranteedX) > 0.01f)
-                    availableLanes.Add(lane);
-            }
-
-            int spawned = 0;
-            foreach (var lane in availableLanes)
-            {
-                if (spawned >= decoyCount) break;
-
-                PadColor decoyColor = frogColor;
-                for (int attempt = 0; attempt < 3; attempt++)
-                {
-                    decoyColor = RandomColor();
-                    if (decoyColor != frogColor) break;
-                }
-                if (decoyColor == frogColor) continue;
-
-                _pads.Add(new PadData(_nextId++, decoyColor, lane, -OffscreenMargin));
-                spawned++;
-            }
+            _pads.Add(new PadData(_nextId++, color, x, -OffscreenMargin, type, vx, da));
         }
 
         // Count rotten pads whose colour matches the frog (i.e. visible traps).

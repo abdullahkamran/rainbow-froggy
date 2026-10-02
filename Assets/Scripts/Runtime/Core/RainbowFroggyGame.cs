@@ -101,6 +101,10 @@ namespace RainbowFroggy.Core
         // Id of the active Lotus pad in the field, or -1 if none.
         private int _lotusPadId = -1;
 
+        // Flaky-pad countdown: initial duration stored on landing so the 30 %
+        // blink threshold can be computed each tick without allocating.
+        private float _flakeyInitial;
+
         public RainbowFroggyGame(IRng rng)
         {
             _rng            = rng;
@@ -167,9 +171,33 @@ namespace RainbowFroggy.Core
 
             // Advance power-up pickups: mirror positions from pads (no independent scroll).
             // Advance Golden Flies at the same effective speed as pads.
-            _powerUpField.Tick(dt, _field.Pads, FrogColor);
+            _powerUpField.Tick(dt, _field.Pads, FrogColor, Phase);
             float effectiveSpeed = _field.ScrollSpeed * _field.ScrollSpeedMultiplier;
             _goldenFlyField.Tick(dt, effectiveSpeed);
+
+            // Flaky-pad countdown: while the frog occupies a flaky pad decrement
+            // its timer, drive the blink flag, and fire game-over on expiry.
+            // Skip when dt == 0 (cross-tap invariant hack) to match the Time Freeze
+            // guard pattern and keep the timer deterministic.
+            if (FrogPadId != -1 && dt > 0f)
+            {
+                PadData frogPad = null;
+                foreach (var p in _field.Pads)
+                    if (p.Id == FrogPadId) { frogPad = p; break; }
+
+                if (frogPad != null && frogPad.Type == PadType.Flaky && frogPad.FlakeyCountdownActive)
+                {
+                    frogPad.FlakeyTimeRemaining -= dt;
+                    frogPad.IsBlinking = frogPad.FlakeyTimeRemaining < _flakeyInitial * 0.30f;
+
+                    if (frogPad.FlakeyTimeRemaining <= 0f)
+                    {
+                        Screen = GameScreen.MisstepGameOver;
+                        if (Score > HighScore) { HighScore = Score; IsNewHighScore = true; }
+                        return;
+                    }
+                }
+            }
 
             // Waterfall: only if the frog's own riding pad scrolled off.
             foreach (var gone in offScreen)
@@ -335,6 +363,16 @@ namespace RainbowFroggy.Core
                 FrogPadId   = -1;
             }
 
+            // Flaky-pad landing: start the countdown.  Duration is normalised to
+            // Phase-1 scroll speed (0.18 units/s) so faster phases give the same
+            // physical distance before the pad expires.
+            if (target.Type == PadType.Flaky)
+            {
+                _flakeyInitial              = 3.0f / (_field.ScrollSpeed / 0.18f);
+                target.FlakeyCountdownActive = true;
+                target.FlakeyTimeRemaining   = _flakeyInitial;
+            }
+
             // Jump-to-collect: if the landed pad carries a pickup, collect it now.
             // This is the only code path that grants power-up effects; there is no
             // tap-to-collect path.
@@ -388,6 +426,7 @@ namespace RainbowFroggy.Core
             _timeFreezeRemaining = 0f;
             _preFreezeMult       = 1.0f;
             _lotusPadId          = -1;
+            _flakeyInitial       = 0f;
             _powerUpField.Reset();
             _goldenFlyField.Reset();
 
