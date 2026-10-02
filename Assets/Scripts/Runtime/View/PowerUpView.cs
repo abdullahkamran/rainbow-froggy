@@ -29,10 +29,10 @@ namespace RainbowFroggy.View
 
         public void SyncPosition(PowerUpData data)
         {
-            // Same world-space convention as PadView: x in [-3.5, 3.5], y in [5, -5].
+            // Same world-space convention as PadView: x in [-5, 5], y in [8.5, -8.5].
             // The +0.4 y offset places the pickup visually above the centre of its pad.
-            float wx = Mathf.Lerp(-3.5f, 3.5f, data.X);
-            float wy = Mathf.LerpUnclamped(5f, -5f, data.Y);
+            float wx = Mathf.Lerp(-5f, 5f, data.X);
+            float wy = Mathf.LerpUnclamped(8.5f, -8.5f, data.Y);
             transform.localPosition = new Vector3(wx, wy + 0.4f, 0f);
         }
 

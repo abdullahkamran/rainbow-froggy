@@ -18,12 +18,12 @@ namespace RainbowFroggy.View
 
         // Update world position from normalised field coordinates.
         // Matches the mapping used by PowerUpView:
-        //   X [0,1] → world [-3.5, 3.5]
-        //   Y [0,1] → world [  5,  -5 ]
+        //   X [0,1] → world [-5, 5]
+        //   Y [0,1] → world [ 8.5, -8.5]
         public void SyncPosition(GoldenFlyData data)
         {
-            float wx = Mathf.Lerp(-3.5f, 3.5f, data.X);
-            float wy = Mathf.Lerp(5f, -5f, data.Y);
+            float wx = Mathf.Lerp(-5f, 5f, data.X);
+            float wy = Mathf.Lerp(8.5f, -8.5f, data.Y);
             transform.position = new Vector3(wx, wy, 0f);
         }
     }

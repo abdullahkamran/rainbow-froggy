@@ -96,6 +96,7 @@ namespace RainbowFroggy.View
 
             ConfigureCamera();
             BuildBackground();
+            BuildBanks();
             BuildFrog();
             _skinService = new SkinService();
             _frogView.SetSkin(_skinService.EquippedSprite);
@@ -541,7 +542,7 @@ namespace RainbowFroggy.View
                 _createdRoots.Add(go);
             }
             cam.orthographic       = true;
-            cam.orthographicSize   = 6f;
+            cam.orthographicSize   = 9f;
             cam.clearFlags         = CameraClearFlags.SolidColor;
             cam.backgroundColor    = ColorPalette.River;
             cam.transform.position = new Vector3(0f, 0f, -10f);
@@ -549,10 +550,27 @@ namespace RainbowFroggy.View
 
         private void BuildBackground()
         {
-            var go = CreateSpriteQuad("Background", new Vector2(9f, 13f));
+            var go = CreateSpriteQuad("Background", new Vector2(11f, 20f));
             go.GetComponent<SpriteRenderer>().color        = ColorPalette.River;
             go.GetComponent<SpriteRenderer>().sortingOrder = -10;
             _createdRoots.Add(go);
+        }
+
+        // Two static river-bank strips that frame the play area at X = ±5.
+        // sortingOrder −5 places them above the river background (−10) and below pads (0).
+        private void BuildBanks()
+        {
+            var left = CreateSpriteQuad("BankLeft", new Vector2(1f, 20f));
+            left.transform.position                          = new Vector3(-5f, 0f, 0f);
+            left.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
+            left.GetComponent<SpriteRenderer>().sortingOrder = -5;
+            _createdRoots.Add(left);
+
+            var right = CreateSpriteQuad("BankRight", new Vector2(1f, 20f));
+            right.transform.position                          = new Vector3(5f, 0f, 0f);
+            right.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
+            right.GetComponent<SpriteRenderer>().sortingOrder = -5;
+            _createdRoots.Add(right);
         }
 
         private void BuildFrog()
