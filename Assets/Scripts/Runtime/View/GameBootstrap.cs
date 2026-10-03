@@ -550,9 +550,8 @@ namespace RainbowFroggy.View
 
         private void BuildBackground()
         {
-            var go = CreateSpriteQuad("Background", new Vector2(11f, 20f));
-            go.GetComponent<SpriteRenderer>().color        = ColorPalette.River;
-            go.GetComponent<SpriteRenderer>().sortingOrder = -10;
+            var go = new GameObject("Background");
+            go.AddComponent<WaterBackground>();
             _createdRoots.Add(go);
         }
 
