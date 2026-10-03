@@ -41,6 +41,10 @@ namespace RainbowFroggy.View
         private GameObject _frostOverlayGO;
         private GameObject _timeFreezeCountdownGO;
 
+        // Scrolling bank components — ScrollSpeed is synced every frame in Update().
+        private RiverBankScroll _bankLeft;
+        private RiverBankScroll _bankRight;
+
         private Material         _spriteMat;
         private AudioService     _audioService;
         private int              _lastPhase = 1;
@@ -122,6 +126,11 @@ namespace RainbowFroggy.View
 
         private void Update()
         {
+            // Keep bank scroll speed in sync with the field scroll speed every frame.
+            float bankSpeed = _game.Field.ScrollSpeed * 10f;
+            if (_bankLeft  != null) _bankLeft.ScrollSpeed  = bankSpeed;
+            if (_bankRight != null) _bankRight.ScrollSpeed = bankSpeed;
+
             // Only tick and handle gameplay input while in Playing state.
             if (_game.Screen != GameScreen.Playing) return;
 
@@ -556,21 +565,40 @@ namespace RainbowFroggy.View
             _createdRoots.Add(go);
         }
 
-        // Two static river-bank strips that frame the play area at X = ±5.
-        // sortingOrder −5 places them above the river background (−10) and below pads (0).
+        // Two infinitely scrolling river-bank strips framing the play area at X = ±5.
+        // sortingOrder −5 (set per tile inside RiverBankScroll) places them above the
+        // river background (−10) and below pads (0).
         private void BuildBanks()
         {
-            var left = CreateSpriteQuad("BankLeft", new Vector2(1f, 20f));
-            left.transform.position                          = new Vector3(-5f, 0f, 0f);
-            left.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
-            left.GetComponent<SpriteRenderer>().sortingOrder = -5;
-            _createdRoots.Add(left);
+            var sprite = Resources.Load<Sprite>("bank");
+            if (sprite == null)
+            {
+                Debug.LogError("[GameBootstrap] BuildBanks: could not load 'bank' sprite from Resources — river banks will be skipped.");
+                return;
+            }
 
-            var right = CreateSpriteQuad("BankRight", new Vector2(1f, 20f));
-            right.transform.position                          = new Vector3(5f, 0f, 0f);
-            right.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
-            right.GetComponent<SpriteRenderer>().sortingOrder = -5;
-            _createdRoots.Add(right);
+            float spriteWorldHeight = sprite.rect.height / sprite.pixelsPerUnit;
+
+            // Left bank — normal orientation, no vertical stagger.
+            var leftGO = new GameObject("BankLeft");
+            leftGO.SetActive(false);
+            leftGO.transform.position = new Vector3(-5f, 0f, 0f);
+            _bankLeft                 = leftGO.AddComponent<RiverBankScroll>();
+            _bankLeft.BankSprite      = sprite;
+            _bankLeft.VerticalOffset  = 0f;
+            leftGO.SetActive(true);
+            _createdRoots.Add(leftGO);
+
+            // Right bank — flipped and staggered by half a tile height.
+            var rightGO = new GameObject("BankRight");
+            rightGO.SetActive(false);
+            rightGO.transform.position = new Vector3(5f, 0f, 0f);
+            _bankRight                 = rightGO.AddComponent<RiverBankScroll>();
+            _bankRight.BankSprite      = sprite;
+            _bankRight.SetFlipX(true);
+            _bankRight.VerticalOffset  = spriteWorldHeight * 0.5f;
+            rightGO.SetActive(true);
+            _createdRoots.Add(rightGO);
         }
 
         private void BuildFrog()
