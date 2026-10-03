@@ -41,10 +41,6 @@ namespace RainbowFroggy.View
         private GameObject _frostOverlayGO;
         private GameObject _timeFreezeCountdownGO;
 
-        // Scrolling bank components — ScrollSpeed is synced every frame in Update().
-        private RiverBankScroll _bankLeft;
-        private RiverBankScroll _bankRight;
-
         private Material         _spriteMat;
         private AudioService     _audioService;
         private int              _lastPhase = 1;
@@ -126,11 +122,6 @@ namespace RainbowFroggy.View
 
         private void Update()
         {
-            // Keep bank scroll speed in sync with the field scroll speed every frame.
-            float bankSpeed = _game.Field.ScrollSpeed * 10f;
-            if (_bankLeft  != null) _bankLeft.ScrollSpeed  = bankSpeed;
-            if (_bankRight != null) _bankRight.ScrollSpeed = bankSpeed;
-
             // Only tick and handle gameplay input while in Playing state.
             if (_game.Screen != GameScreen.Playing) return;
 
@@ -583,9 +574,11 @@ namespace RainbowFroggy.View
             var leftGO = new GameObject("BankLeft");
             leftGO.SetActive(false);
             leftGO.transform.position = new Vector3(-5f, 0f, 0f);
-            _bankLeft                 = leftGO.AddComponent<RiverBankScroll>();
-            _bankLeft.BankSprite      = sprite;
-            _bankLeft.VerticalOffset  = 0f;
+            var bankLeft              = leftGO.AddComponent<RiverBankScroll>();
+            bankLeft.BankSprite       = sprite;
+            bankLeft.FlipX            = false;
+            bankLeft.VerticalOffset   = 0f;
+            bankLeft.Bind(_game);
             leftGO.SetActive(true);
             _createdRoots.Add(leftGO);
 
@@ -593,10 +586,11 @@ namespace RainbowFroggy.View
             var rightGO = new GameObject("BankRight");
             rightGO.SetActive(false);
             rightGO.transform.position = new Vector3(5f, 0f, 0f);
-            _bankRight                 = rightGO.AddComponent<RiverBankScroll>();
-            _bankRight.BankSprite      = sprite;
-            _bankRight.SetFlipX(true);
-            _bankRight.VerticalOffset  = spriteWorldHeight * 0.5f;
+            var bankRight              = rightGO.AddComponent<RiverBankScroll>();
+            bankRight.BankSprite       = sprite;
+            bankRight.FlipX            = true;
+            bankRight.VerticalOffset   = spriteWorldHeight * 0.5f;
+            bankRight.Bind(_game);
             rightGO.SetActive(true);
             _createdRoots.Add(rightGO);
         }
