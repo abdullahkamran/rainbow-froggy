@@ -52,7 +52,7 @@ namespace RainbowFroggy.View
             SpawnEye(mat, new Vector3(-0.27f, 0.28f, 0f));
             SpawnEye(mat, new Vector3( 0.27f, 0.28f, 0f));
 
-            transform.localScale = new Vector3(0.85f, 0.85f, 1f);
+            transform.localScale = new Vector3(1.0f, 1.0f, 1f);
             _originalScale       = transform.localScale;
         }
 

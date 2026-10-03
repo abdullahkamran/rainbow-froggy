@@ -23,27 +23,27 @@ namespace RainbowFroggy.Tests.PlayMode
         }
 
         // Criterion 7 (visual sizing): FrogView must initialise its localScale to
-        // (0.85, 0.85, 1) — the value specified by the visual-sizing requirement
-        // (raised from the previous 0.6 to give the frog a more prominent footprint).
+        // (1.0, 1.0, 1) — the value specified by the visual-sizing requirement
+        // (raised from the previous 0.85 to give the frog a more prominent footprint).
         // Pinning this here means any future regression to the old value is caught
         // immediately by the Test Runner.
         [UnityTest]
-        public IEnumerator FrogView_Awake_SetsLocalScaleTo0_85()
+        public IEnumerator FrogView_Awake_SetsLocalScaleTo1_0()
         {
             _go = new GameObject("TestFrog");
             _go.AddComponent<FrogView>();
             yield return null; // let Awake complete and the frame settle
 
             Assert.AreEqual(
-                new Vector3(0.85f, 0.85f, 1f),
+                new Vector3(1.0f, 1.0f, 1f),
                 _go.transform.localScale,
-                "FrogView must initialise localScale to (0.85, 0.85, 1) per the visual-sizing spec");
+                "FrogView must initialise localScale to (1.0, 1.0, 1) per the visual-sizing spec");
         }
 
         // Verify that Reset() restores localScale to the same initialised value after
         // a sink animation would have zeroed it out.
         [UnityTest]
-        public IEnumerator FrogView_Reset_RestoresLocalScaleTo0_85()
+        public IEnumerator FrogView_Reset_RestoresLocalScaleTo1_0()
         {
             _go = new GameObject("TestFrog");
             var frogView = _go.AddComponent<FrogView>();
@@ -55,9 +55,9 @@ namespace RainbowFroggy.Tests.PlayMode
             frogView.Reset();
 
             Assert.AreEqual(
-                new Vector3(0.85f, 0.85f, 1f),
+                new Vector3(1.0f, 1.0f, 1f),
                 _go.transform.localScale,
-                "FrogView.Reset() must restore localScale to (0.85, 0.85, 1)");
+                "FrogView.Reset() must restore localScale to (1.0, 1.0, 1)");
         }
     }
 }

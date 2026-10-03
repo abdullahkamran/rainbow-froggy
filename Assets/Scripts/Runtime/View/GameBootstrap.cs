@@ -415,7 +415,7 @@ namespace RainbowFroggy.View
                         go = new GameObject("Pad_" + pad.Id);
                         var sr      = go.AddComponent<SpriteRenderer>();
                         sr.material = _spriteMat;
-                        go.transform.localScale = new Vector3(1.8f, 1.8f, 1f);
+                        go.transform.localScale = new Vector3(2.0f, 2.0f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
                     }
