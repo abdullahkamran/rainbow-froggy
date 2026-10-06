@@ -559,21 +559,43 @@ namespace RainbowFroggy.View
             _createdRoots.Add(go);
         }
 
-        // Two static river-bank strips that frame the play area at X = ±5.
-        // sortingOrder −5 places them above the river background (−10) and below pads (0).
+        // Two infinitely scrolling river-bank strips framing the play area at X = ±5.
+        // sortingOrder −5 (set per tile inside RiverBankScroll) places them above the
+        // river background (−10) and below pads (0).
         private void BuildBanks()
         {
-            var left = CreateSpriteQuad("BankLeft", new Vector2(1f, 20f));
-            left.transform.position                          = new Vector3(-5f, 0f, 0f);
-            left.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
-            left.GetComponent<SpriteRenderer>().sortingOrder = -5;
-            _createdRoots.Add(left);
+            var sprite = Resources.Load<Sprite>("bank");
+            if (sprite == null)
+            {
+                Debug.LogError("[GameBootstrap] BuildBanks: could not load 'bank' sprite from Resources — river banks will be skipped.");
+                return;
+            }
 
-            var right = CreateSpriteQuad("BankRight", new Vector2(1f, 20f));
-            right.transform.position                          = new Vector3(5f, 0f, 0f);
-            right.GetComponent<SpriteRenderer>().color        = new Color(0.45f, 0.32f, 0.18f);
-            right.GetComponent<SpriteRenderer>().sortingOrder = -5;
-            _createdRoots.Add(right);
+            float spriteWorldHeight = sprite.rect.height / sprite.pixelsPerUnit;
+
+            // Left bank — normal orientation, no vertical stagger.
+            var leftGO = new GameObject("BankLeft");
+            leftGO.SetActive(false);
+            leftGO.transform.position = new Vector3(-5f, 0f, 0f);
+            var bankLeft              = leftGO.AddComponent<RiverBankScroll>();
+            bankLeft.BankSprite       = sprite;
+            bankLeft.FlipX            = false;
+            bankLeft.VerticalOffset   = 0f;
+            bankLeft.Bind(_game);
+            leftGO.SetActive(true);
+            _createdRoots.Add(leftGO);
+
+            // Right bank — flipped and staggered by half a tile height.
+            var rightGO = new GameObject("BankRight");
+            rightGO.SetActive(false);
+            rightGO.transform.position = new Vector3(5f, 0f, 0f);
+            var bankRight              = rightGO.AddComponent<RiverBankScroll>();
+            bankRight.BankSprite       = sprite;
+            bankRight.FlipX            = true;
+            bankRight.VerticalOffset   = spriteWorldHeight * 0.5f;
+            bankRight.Bind(_game);
+            rightGO.SetActive(true);
+            _createdRoots.Add(rightGO);
         }
 
         private void BuildFrog()
