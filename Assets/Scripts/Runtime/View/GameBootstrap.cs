@@ -45,6 +45,7 @@ namespace RainbowFroggy.View
         private AudioService     _audioService;
         private int              _lastPhase = 1;
         private ChallengeService _challengeService;
+        private WaterBackground  _waterBg;
         private Text             _lifetimeFliesText;  // main-menu lifetime balance display
 
         // Test seams: frost overlay and countdown GameObjects.
@@ -122,6 +123,9 @@ namespace RainbowFroggy.View
 
         private void Update()
         {
+            if (_waterBg != null)
+                _waterBg.ScrollSpeed = _game.Field.ScrollSpeed * 10f;
+
             // Only tick and handle gameplay input while in Playing state.
             if (_game.Screen != GameScreen.Playing) return;
 
@@ -406,7 +410,7 @@ namespace RainbowFroggy.View
                         go = new GameObject("LotusPad_" + pad.Id);
                         var lsr      = go.AddComponent<SpriteRenderer>();
                         lsr.material = _spriteMat;
-                        go.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+                        go.transform.localScale = new Vector3(2.0f, 2.0f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
                     }
@@ -415,7 +419,7 @@ namespace RainbowFroggy.View
                         go = new GameObject("Pad_" + pad.Id);
                         var sr      = go.AddComponent<SpriteRenderer>();
                         sr.material = _spriteMat;
-                        go.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
+                        go.transform.localScale = new Vector3(2.0f, 2.0f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
                     }
@@ -550,9 +554,8 @@ namespace RainbowFroggy.View
 
         private void BuildBackground()
         {
-            var go = CreateSpriteQuad("Background", new Vector2(11f, 20f));
-            go.GetComponent<SpriteRenderer>().color        = ColorPalette.River;
-            go.GetComponent<SpriteRenderer>().sortingOrder = -10;
+            var go   = new GameObject("Background");
+            _waterBg = go.AddComponent<WaterBackground>();
             _createdRoots.Add(go);
         }
 

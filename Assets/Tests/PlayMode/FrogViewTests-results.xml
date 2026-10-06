@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="16" result="Passed" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.3921995">
+  <test-suite type="TestSuite" id="1026" name="RainbowFroggy" fullname="RainbowFroggy" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.392200" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1021" name="RainbowFroggy.Tests.PlayMode.dll" fullname="/Users/negan/haytham-intelligence/.worktrees/abdullahkamran__rainbow-froggy__issue-65/Library/ScriptAssemblies/RainbowFroggy.Tests.PlayMode.dll" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.387014" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="84248" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1022" name="RainbowFroggy" fullname="RainbowFroggy" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.386697" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1023" name="Tests" fullname="RainbowFroggy.Tests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.386492" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1024" name="PlayMode" fullname="RainbowFroggy.Tests.PlayMode" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="6.386252" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1001" name="FrogViewTests" fullname="RainbowFroggy.Tests.PlayMode.FrogViewTests" classname="RainbowFroggy.Tests.PlayMode.FrogViewTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.029136" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1002" name="FrogView_Awake_SetsLocalScaleTo0_85" fullname="RainbowFroggy.Tests.PlayMode.FrogViewTests.FrogView_Awake_SetsLocalScaleTo0_85" methodname="FrogView_Awake_SetsLocalScaleTo0_85" classname="RainbowFroggy.Tests.PlayMode.FrogViewTests" runstate="Runnable" seed="1571859311" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.020956" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1003" name="FrogView_Reset_RestoresLocalScaleTo0_85" fullname="RainbowFroggy.Tests.PlayMode.FrogViewTests.FrogView_Reset_RestoresLocalScaleTo0_85" methodname="FrogView_Reset_RestoresLocalScaleTo0_85" classname="RainbowFroggy.Tests.PlayMode.FrogViewTests" runstate="Runnable" seed="1216628807" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.001930" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1004" name="GameplayTests" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.009989" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1005" name="FrogColor_EqualsLandedPadColor_AfterJump" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests.FrogColor_EqualsLandedPadColor_AfterJump" methodname="FrogColor_EqualsLandedPadColor_AfterJump" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" seed="1855864742" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.003141" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1008" name="FrogPadScrollsOff_TriggersWaterfallGameOver" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests.FrogPadScrollsOff_TriggersWaterfallGameOver" methodname="FrogPadScrollsOff_TriggersWaterfallGameOver" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" seed="1876878661" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.001685" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1009" name="GuaranteedPath_MatchingPadAlwaysPresent" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests.GuaranteedPath_MatchingPadAlwaysPresent" methodname="GuaranteedPath_MatchingPadAlwaysPresent" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" seed="1125235084" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.002828" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1006" name="TapMatchingPad_IncreasesScore" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests.TapMatchingPad_IncreasesScore" methodname="TapMatchingPad_IncreasesScore" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" seed="1218372179" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.000748" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1007" name="TapNonMatchingPad_TriggersMisstepGameOver" fullname="RainbowFroggy.Tests.PlayMode.GameplayTests.TapNonMatchingPad_TriggersMisstepGameOver" methodname="TapNonMatchingPad_TriggersMisstepGameOver" classname="RainbowFroggy.Tests.PlayMode.GameplayTests" runstate="Runnable" seed="1780501614" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.000758" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1010" name="PowerUpViewTests" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="5.808472" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1014" name="LotusBloom_Collect_LotusPadGONearWorldCentre" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests.LotusBloom_Collect_LotusPadGONearWorldCentre" methodname="LotusBloom_Collect_LotusPadGONearWorldCentre" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" seed="1078696675" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.268444" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1015" name="LotusBloom_Landing_DestroysPad_SecondLandingFails" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests.LotusBloom_Landing_DestroysPad_SecondLandingFails" methodname="LotusBloom_Landing_DestroysPad_SecondLandingFails" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" seed="660423609" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.009579" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1012" name="TimeFreeze_Collect_FrostOverlayActive_CountdownActive" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests.TimeFreeze_Collect_FrostOverlayActive_CountdownActive" methodname="TimeFreeze_Collect_FrostOverlayActive_CountdownActive" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" seed="57920133" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:41Z" duration="0.010706" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1013" name="TimeFreeze_Expiry_FrostOverlayInactive_CountdownInactive" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests.TimeFreeze_Expiry_FrostOverlayInactive_CountdownInactive" methodname="TimeFreeze_Expiry_FrostOverlayInactive_CountdownInactive" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" seed="1841245103" result="Passed" start-time="2026-10-02 17:44:41Z" end-time="2026-10-02 17:44:47Z" duration="5.508738" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1011" name="TimeFreeze_SpawnPickup_IsNonNullAndWithinRiverBounds" fullname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests.TimeFreeze_SpawnPickup_IsNonNullAndWithinRiverBounds" methodname="TimeFreeze_SpawnPickup_IsNonNullAndWithinRiverBounds" classname="RainbowFroggy.Tests.PlayMode.PowerUpViewTests" runstate="Runnable" seed="1443569199" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.010159" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1016" name="UiFlowTests" fullname="RainbowFroggy.Tests.PlayMode.UiFlowTests" classname="RainbowFroggy.Tests.PlayMode.UiFlowTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.537784" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1017" name="BottomNav_VisibleInIdle_HiddenInPlay" fullname="RainbowFroggy.Tests.PlayMode.UiFlowTests.BottomNav_VisibleInIdle_HiddenInPlay" methodname="BottomNav_VisibleInIdle_HiddenInPlay" classname="RainbowFroggy.Tests.PlayMode.UiFlowTests" runstate="Runnable" seed="499749018" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.508782" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1018" name="CenterZoneTap_StartsRun_NoSceneLoad" fullname="RainbowFroggy.Tests.PlayMode.UiFlowTests.CenterZoneTap_StartsRun_NoSceneLoad" methodname="CenterZoneTap_StartsRun_NoSceneLoad" classname="RainbowFroggy.Tests.PlayMode.UiFlowTests" runstate="Runnable" seed="1161579277" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.006863" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1019" name="GameOverPanel_ContainsRequiredElements" fullname="RainbowFroggy.Tests.PlayMode.UiFlowTests.GameOverPanel_ContainsRequiredElements" methodname="GameOverPanel_ContainsRequiredElements" classname="RainbowFroggy.Tests.PlayMode.UiFlowTests" runstate="Runnable" seed="1384622591" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.010005" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1020" name="Restart_ResetsInPlace" fullname="RainbowFroggy.Tests.PlayMode.UiFlowTests.Restart_ResetsInPlace" methodname="Restart_ResetsInPlace" classname="RainbowFroggy.Tests.PlayMode.UiFlowTests" runstate="Runnable" seed="826367331" result="Passed" start-time="2026-10-02 17:44:47Z" end-time="2026-10-02 17:44:47Z" duration="0.011208" asserts="0">
+                <properties>
+                  <property name="_JOINTYPE" value="UnityCombinatorial" />
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
