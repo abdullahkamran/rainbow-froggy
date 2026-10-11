@@ -164,7 +164,7 @@ namespace RainbowFroggy.View
 
                 // Re-read target each frame so landing tracks the scrolling pad.
                 Vector3 targetPos = targetPad != null
-                    ? targetPad.position + new Vector3(0f, 0.3f, 0f)
+                    ? targetPad.position + new Vector3(0f, 0.4f, 0f)
                     : transform.position;
 
                 float arc          = 4f * ArcHeight * t * (1f - t);
@@ -174,7 +174,7 @@ namespace RainbowFroggy.View
             }
 
             if (targetPad != null)
-                transform.position = targetPad.position + new Vector3(0f, 0.3f, 0f);
+                transform.position = targetPad.position + new Vector3(0f, 0.4f, 0f);
             _activeCoroutine = null;
             onComplete?.Invoke();
         }
