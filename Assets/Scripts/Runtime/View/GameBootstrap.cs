@@ -237,7 +237,7 @@ namespace RainbowFroggy.View
             if (_game.FrogPadId != -1 &&
                 _padViews.TryGetValue(_game.FrogPadId, out var fp))
             {
-                _frogView.SetAnchor(fp.transform.position + new Vector3(0f, 0.3f, 0f));
+                _frogView.SetAnchor(fp.transform.position + new Vector3(0f, 0.4f, 0f));
             }
 
             // Restore idle chrome immediately (no fade on restart).
@@ -261,7 +261,7 @@ namespace RainbowFroggy.View
             if (_game.FrogPadId != -1 &&
                 _padViews.TryGetValue(_game.FrogPadId, out var rp))
             {
-                _frogView.SetAnchor(rp.transform.position + new Vector3(0f, 0.3f, 0f));
+                _frogView.SetAnchor(rp.transform.position + new Vector3(0f, 0.4f, 0f));
             }
 
             _game.EnterIdle();
@@ -345,7 +345,7 @@ namespace RainbowFroggy.View
                 _frogView.JumpTo(padView.transform, () =>
                 {
                     _frogView.SetAnchor(padView.transform.position +
-                                        new Vector3(0f, 0.3f, 0f));
+                                        new Vector3(0f, 0.4f, 0f));
                     _frogView.FlashColor(_game.FrogColor);
                     _audioService.PlayLanding();                   // AC4: on arrival
                     if (padView.PadType == PadType.Rainbow)
@@ -410,7 +410,7 @@ namespace RainbowFroggy.View
                         go = new GameObject("LotusPad_" + pad.Id);
                         var lsr      = go.AddComponent<SpriteRenderer>();
                         lsr.material = _spriteMat;
-                        go.transform.localScale = new Vector3(2.0f, 2.0f, 1f);
+                        go.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
                     }
@@ -419,7 +419,7 @@ namespace RainbowFroggy.View
                         go = new GameObject("Pad_" + pad.Id);
                         var sr      = go.AddComponent<SpriteRenderer>();
                         sr.material = _spriteMat;
-                        go.transform.localScale = new Vector3(2.0f, 2.0f, 1f);
+                        go.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
                         var col = go.AddComponent<CircleCollider2D>();
                         col.radius = 0.5f;
                     }
@@ -437,7 +437,7 @@ namespace RainbowFroggy.View
                 _padViews.TryGetValue(_game.FrogPadId, out var frogPad))
             {
                 _frogView.SetAnchor(frogPad.transform.position +
-                                    new Vector3(0f, 0.3f, 0f));
+                                    new Vector3(0f, 0.4f, 0f));
             }
         }
 
