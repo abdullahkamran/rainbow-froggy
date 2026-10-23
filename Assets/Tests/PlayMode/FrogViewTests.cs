@@ -23,8 +23,8 @@ namespace RainbowFroggy.Tests.PlayMode
         }
 
         // Criterion 7 (visual sizing): FrogView must initialise its localScale to
-        // (1.0, 1.0, 1) — the value specified by the visual-sizing requirement
-        // (raised from the previous 0.85 to give the frog a more prominent footprint).
+        // (0.85, 0.85, 1) — the value specified by the visual-sizing requirement
+        // (reduced from 1.0 so the frog is smaller relative to the larger pads).
         // Pinning this here means any future regression to the old value is caught
         // immediately by the Test Runner.
         [UnityTest]
@@ -35,9 +35,9 @@ namespace RainbowFroggy.Tests.PlayMode
             yield return null; // let Awake complete and the frame settle
 
             Assert.AreEqual(
-                new Vector3(1.0f, 1.0f, 1f),
+                new Vector3(0.85f, 0.85f, 1f),
                 _go.transform.localScale,
-                "FrogView must initialise localScale to (1.0, 1.0, 1) per the visual-sizing spec");
+                "FrogView must initialise localScale to (0.85, 0.85, 1) per the visual-sizing spec");
         }
 
         // Verify that Reset() restores localScale to the same initialised value after
@@ -55,9 +55,9 @@ namespace RainbowFroggy.Tests.PlayMode
             frogView.Reset();
 
             Assert.AreEqual(
-                new Vector3(1.0f, 1.0f, 1f),
+                new Vector3(0.85f, 0.85f, 1f),
                 _go.transform.localScale,
-                "FrogView.Reset() must restore localScale to (1.0, 1.0, 1)");
+                "FrogView.Reset() must restore localScale to (0.85, 0.85, 1)");
         }
     }
 }

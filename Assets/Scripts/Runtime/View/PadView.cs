@@ -48,7 +48,7 @@ namespace RainbowFroggy.View
                 var flowerGO                  = new GameObject("Flower");
                 flowerGO.transform.SetParent(transform, false);
                 flowerGO.transform.localPosition = new Vector3(0f, 0f, -0.01f);
-                flowerGO.transform.localScale    = new Vector3(0.5f, 0.5f, 1f);
+                flowerGO.transform.localScale    = new Vector3(0.65f, 0.65f, 1f);
                 _flowerSr                     = flowerGO.AddComponent<SpriteRenderer>();
                 _flowerSr.sprite              = SpriteFactory.Flower();
                 _flowerSr.sharedMaterial      = _sr.sharedMaterial;
