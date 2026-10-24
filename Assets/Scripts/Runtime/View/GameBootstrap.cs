@@ -318,7 +318,24 @@ namespace RainbowFroggy.View
 
             var worldPos = Camera.main.ScreenToWorldPoint(screenPos);
             var hit      = Physics2D.OverlapPoint(worldPos);
-            if (hit == null) return;
+            if (hit == null)
+            {
+                // Taps on UI never count as water taps.
+                var ev = UnityEngine.EventSystems.EventSystem.current;
+                if (ev != null && ev.IsPointerOverGameObject()) return;
+                if (ev != null && Input.touchCount > 0 &&
+                    ev.IsPointerOverGameObject(Input.GetTouch(0).fingerId)) return;
+
+                // Open water between the banks (x in [-5, 5]): the frog jumps in and drowns.
+                if (Mathf.Abs(worldPos.x) >= 5f) return;
+                if (_game.TapWater() != TapResult.Misstep) return;
+
+                var splash = new GameObject("WaterSplashTarget");
+                splash.transform.position = new Vector3(worldPos.x, worldPos.y, 0f);
+                _createdRoots.Add(splash);
+                StartMisstepGameOver(splash.transform, () => Destroy(splash));
+                return;
+            }
 
             // Golden Fly collectible: same hit-test path as pads (AC2).
             // Guard on _flyViews first: Unity's Destroy() is deferred to end-of-frame, so a fly
@@ -369,21 +386,31 @@ namespace RainbowFroggy.View
             else if (result == TapResult.Misstep)
             {
                 // Jump to the wrong pad, then sink, then show game-over.
-                _audioService.PlayMisstep();
-                PlayerPrefs.SetInt("HighScore", _game.HighScore);
-                PlayerPrefs.Save();
-                LeaderboardStore.Record(_game.Score);
-                int challengeBonus2 = _challengeService.TryGrantBonus();
-                _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus2);
-                bool  newHigh2 = _game.IsNewHighScore;
-                int   hi2      = _game.HighScore;
-                int   sc2      = _game.Score;
-                int   fl2      = _game.FliesThisRun;
-                _frogView.JumpTo(padView.transform, () =>
-                    _frogView.Sink(() =>
-                        _gameOverScreen.Show(GameScreen.MisstepGameOver,
-                                             sc2, fl2, hi2, newHigh2)));
+                StartMisstepGameOver(padView.transform, null);
             }
+        }
+
+        // Shared misstep flow: jump to the target (wrong pad or open water), sink,
+        // then show the game-over screen.
+        private void StartMisstepGameOver(Transform target, System.Action onSunk)
+        {
+            _audioService.PlayMisstep();
+            PlayerPrefs.SetInt("HighScore", _game.HighScore);
+            PlayerPrefs.Save();
+            LeaderboardStore.Record(_game.Score);
+            int challengeBonus2 = _challengeService.TryGrantBonus();
+            _gameOverScreen.SetPendingFlies(_game.FliesThisRun, challengeBonus2);
+            bool  newHigh2 = _game.IsNewHighScore;
+            int   hi2      = _game.HighScore;
+            int   sc2      = _game.Score;
+            int   fl2      = _game.FliesThisRun;
+            _frogView.JumpTo(target, () =>
+                _frogView.Sink(() =>
+                {
+                    onSunk?.Invoke();
+                    _gameOverScreen.Show(GameScreen.MisstepGameOver,
+                                         sc2, fl2, hi2, newHigh2);
+                }));
         }
 
         // ------------------------------------------------------------------ //

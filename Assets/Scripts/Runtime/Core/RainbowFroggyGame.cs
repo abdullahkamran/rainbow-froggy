@@ -271,6 +271,18 @@ namespace RainbowFroggy.Core
             FliesThisRun += 1;
         }
 
+        // The player tapped open water: the frog jumps in and drowns (game over).
+        public TapResult TapWater()
+        {
+            LastCollectedPowerUp = null;
+
+            if (Screen != GameScreen.Playing) return TapResult.None;
+
+            Screen = GameScreen.MisstepGameOver;
+            if (Score > HighScore) { HighScore = Score; IsNewHighScore = true; }
+            return TapResult.Misstep;
+        }
+
         // The player tapped a pad.
         public TapResult TapPad(int padId)
         {

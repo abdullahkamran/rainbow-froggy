@@ -282,3 +282,10 @@ aesthetics: existing pads, pickups and Golden Flies keep scrolling and drifting
 at the current scroll speed, the water and river bank keep animating, but
 nothing new spawns and no game rules are evaluated (no path guarantee, no
 further game-over checks).  Implemented by `RainbowFroggyGame.TickDecor`.
+
+### Tapping open water is fatal
+
+While playing, a tap on open water (between the two banks, not on a pad, fly or
+UI element) makes the frog jump to that spot and sink, ending the run as a
+misstep game over.  Taps on the banks (|x| >= 5) or on UI are ignored.
+Implemented by `RainbowFroggyGame.TapWater`.
