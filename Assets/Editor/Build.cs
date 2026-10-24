@@ -38,12 +38,13 @@ public static class Build
         if (summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             Debug.Log("WebGL build succeeded: " + summary.totalSize + " bytes");
-            EditorApplication.Exit(0);
+            // Only quit in batch mode; a live Editor must stay open after the build.
+            if (Application.isBatchMode) EditorApplication.Exit(0);
         }
         else
         {
             Debug.LogError("WebGL build failed: " + summary.totalErrors + " errors");
-            EditorApplication.Exit(1);
+            if (Application.isBatchMode) EditorApplication.Exit(1);
         }
     }
 }

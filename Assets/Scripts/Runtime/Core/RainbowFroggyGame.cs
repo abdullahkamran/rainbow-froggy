@@ -211,6 +211,18 @@ namespace RainbowFroggy.Core
             }
         }
 
+        // Keep the river drifting on the game-over screens for aesthetics: existing
+        // pads, pickups and flies keep scrolling but nothing new spawns and no
+        // game rules are evaluated.
+        public void TickDecor(float dt)
+        {
+            if (Screen != GameScreen.WaterfallGameOver && Screen != GameScreen.MisstepGameOver) return;
+
+            _field.TickScrollOnly(dt);
+            _powerUpField.Follow(_field.Pads);
+            _goldenFlyField.ScrollOnly(dt, _field.ScrollSpeed * _field.ScrollSpeedMultiplier);
+        }
+
         // Collect a power-up pickup.  Called internally by TapPad when the frog
         // lands on a pad that carries a pickup (jump-to-collect mechanic).
         // Also exposed as a test seam via GameBootstrap.ForceCollectPowerUp.

@@ -186,6 +186,34 @@ namespace RainbowFroggy.Core
             }
         }
 
+        // Scroll and drift existing pads and drop those that leave the screen,
+        // without spawning anything or enforcing the guaranteed path.  Used for
+        // the decorative river on game-over screens.
+        public void TickScrollOnly(float dt)
+        {
+            foreach (var pad in _pads)
+            {
+                pad.Y += _scrollSpeed * _scrollSpeedMultiplier * dt;
+
+                if (pad.VelocityX != 0f)
+                {
+                    pad.X += pad.VelocityX * dt;
+                    if (pad.X <= 0.05f)
+                    {
+                        pad.X         = 0.05f;
+                        pad.VelocityX = -pad.VelocityX;
+                    }
+                    else if (pad.X >= 0.95f)
+                    {
+                        pad.X         = 0.95f;
+                        pad.VelocityX = -pad.VelocityX;
+                    }
+                }
+            }
+
+            _pads.RemoveAll(p => p.Y >= 1.0f + OffscreenMargin);
+        }
+
         // Advance the field by dt seconds.
         // frogColor is the frog's colour AFTER any tap that may have just fired.
         // Returns pads that scrolled off the bottom this tick; only the frog's

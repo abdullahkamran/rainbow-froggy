@@ -274,3 +274,11 @@ leaderboard nav button inherits the position created by
 `BuildNavButton(…, "Leaderboard", 1)` (centre slot of the three-button bar)
 and is **not** verified against that section of the spec.  See @Faiqah181's
 note in the issue discussion (2026-09-24).
+
+### Game-over river keeps drifting
+
+On both game-over screens (waterfall and misstep) the river stays alive for
+aesthetics: existing pads, pickups and Golden Flies keep scrolling and drifting
+at the current scroll speed, the water and river bank keep animating, but
+nothing new spawns and no game rules are evaluated (no path guarantee, no
+further game-over checks).  Implemented by `RainbowFroggyGame.TickDecor`.

@@ -72,6 +72,23 @@ namespace RainbowFroggy.Core
             }
         }
 
+        // Keep existing pickups attached to their pads and drop those whose pad is
+        // gone, without aging or spawning (decorative scroll on game-over screens).
+        public void Follow(IReadOnlyList<PadData> pads)
+        {
+            for (int i = _pickups.Count - 1; i >= 0; i--)
+            {
+                var pu = _pickups[i];
+                PadData host = null;
+                foreach (var pad in pads)
+                    if (pad.Id == pu.PadId) { host = pad; break; }
+
+                if (host == null) { _pickups.RemoveAt(i); continue; }
+                pu.X = host.X;
+                pu.Y = host.Y;
+            }
+        }
+
         // Remove a pickup by id (called when the player collects it via landing).
         public void RemovePickup(int id)
         {

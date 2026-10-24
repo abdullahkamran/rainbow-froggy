@@ -8,7 +8,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $out  = Join-Path $root 'Builds/WebGL'
 
 if (-not $NoBuild) {
-    unity build --target WebGL --execute-method Build.PerformWebGLBuild -buildOutput $out
+    unity build --target WebGL --execute-method Build.PerformWebGLBuild -o $out
     if ($LASTEXITCODE -ne 0) { throw "WebGL build failed" }
 }
 if (-not (Test-Path (Join-Path $out 'index.html'))) { throw "No build at $out" }

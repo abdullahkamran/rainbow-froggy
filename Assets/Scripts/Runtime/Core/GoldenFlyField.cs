@@ -43,6 +43,18 @@ namespace RainbowFroggy.Core
             }
         }
 
+        // Scroll existing flies and discard those that reach the bottom, without
+        // spawning new ones (decorative scroll on game-over screens).
+        public void ScrollOnly(float dt, float scrollSpeed)
+        {
+            for (int i = _flies.Count - 1; i >= 0; i--)
+            {
+                _flies[i].Y += scrollSpeed * dt;
+                if (_flies[i].Y >= 1.0f)
+                    _flies.RemoveAt(i);
+            }
+        }
+
         // Remove a fly by id (called after the player collects it).
         public void RemoveFly(int id)
         {

@@ -16,7 +16,7 @@ All commands use the `unity` CLI from the repo root. The `com.unity.pipeline` pa
 unity test --mode EditMode --output TestResults-EditMode.xml
 unity test --mode PlayMode --output TestResults-PlayMode.xml
 unity test --mode EditMode --filter ScoringTests     # single fixture or test by name
-unity build --target WebGL --execute-method Build.PerformWebGLBuild -buildOutput Builds/WebGL
+unity build --target WebGL --execute-method Build.PerformWebGLBuild -o Builds/WebGL
 ```
 
 - `./scripts/play-webgl.ps1` builds WebGL and serves it on the LAN at port 8080. Pass `-NoBuild` to serve the last build. It uses [scripts/serve.js](scripts/serve.js).

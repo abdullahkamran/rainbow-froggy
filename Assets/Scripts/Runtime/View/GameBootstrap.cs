@@ -127,7 +127,19 @@ namespace RainbowFroggy.View
                 _waterBg.ScrollSpeed = _game.Field.ScrollSpeed * 10f;
 
             // Only tick and handle gameplay input while in Playing state.
-            if (_game.Screen != GameScreen.Playing) return;
+            if (_game.Screen != GameScreen.Playing)
+            {
+                // Game over: keep the river drifting (no new spawns) for aesthetics.
+                if (_game.Screen == GameScreen.WaterfallGameOver ||
+                    _game.Screen == GameScreen.MisstepGameOver)
+                {
+                    _game.TickDecor(Time.deltaTime);
+                    SyncAllPads();
+                    SyncPickups();
+                    SyncFlies();
+                }
+                return;
+            }
 
             _game.Tick(Time.deltaTime);
 
